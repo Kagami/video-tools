@@ -4,18 +4,17 @@
 compare videos frame by frame and draw nice graph
 
 dependencies:
-  * Python 2.7+ or 3.2+
-  * FFmpeg 2+
-  * matplotlib
+  Python 2.7+ or 3.2+
+  FFmpeg 2+
+  matplotlib
 
 examples:
-  compare two videos using SSIM: python {title} -ref orig.mkv 1.mkv 2.mkv
-  fix ref resolution: python {title} -ref orig.mkv -refvf scale=640:-1 1.mkv
-  show time on x axis: python {title} -ref orig.mkv -r ntsc-film 1.mkv 2.mkv
-
-use custom location of FFmpeg executable:
-  *nix:    export VTOOLS_FFMPEG=/opt/ffmpeg/ffmpeg
-  Windows: set VTOOLS_FFMPEG=C:\\ffmpeg.exe
+  # Compare two videos using SSIM
+  python {title} -ref orig.mkv 1.mkv 2.mkv
+  # Fix ref resolution
+  python {title} -ref orig.mkv -refvf scale=640:-1 1.mkv
+  # Show time on x axis
+  python {title} -ref orig.mkv -r ntsc-film 1.mkv 2.mkv
 """
 
 # Since there is no way to wrap future imports in try/except, we use
@@ -101,8 +100,17 @@ def get_opts():
         '-v', action='store_true', dest='verbose',
         help='enable verbose mode')
     parser.add_argument(
+        'inpaths', nargs='+',
+        help='path to the input file(s), e.g. in.mkv\n'
+             'or already collected logs, e.g. /tmp/cmpv-123.log\n'
+             '(required)')
+    parser.add_argument(
         '-k', action='store_true', dest='keep_logs',
         help='keep collected metric logs for additional use')
+    parser.add_argument(
+        '-ref', dest='refpath', metavar='refpath',
+        help='reference (original) path, e.g. orig.mkv\n'
+             '(required unless log files are provided in input)')
     parser.add_argument(
         '-o', dest='graphpath', metavar='graphpath', default='graph.png',
         help='destination graph path (default: %(default)s)')
@@ -112,41 +120,27 @@ def get_opts():
              'using given video rate, e.g. ntsc-film, ntsc or just 60.0\n'
              'see ffmpeg-utils(1) for recognized list of abbreviations')
     parser.add_argument(
-        '-ref', dest='refpath', metavar='refpath',
-        help='reference (original) path, e.g. orig.mkv\n'
-             '(required unless log files are provided in input)')
-    parser.add_argument(
-        'inpaths', nargs='+',
-        help='path to the input file(s), e.g. in.mkv\n'
-             'or already collected logs, e.g. /tmp/cmpv-123.log\n'
-             '(required)')
-    parser.add_argument(
         '-t', dest='duration', metavar='duration',
         help='limit the duration of data read from the input file\n'
-             'duration may be a number in seconds, or in hh:mm:ss[.xxx] form\n'
-             '-t and -to are mutually exclusive')
-    parser.add_argument(
-        '-to', dest='endpos', metavar='position',
-        help='stop writing the output at position\n'
-             'position may be either in seconds or in hh:mm:ss[.xxx] form')
-    parser.add_argument(
-        '-refvf', metavar='filters',
-        help='filters to preprocess reference, e.g. scale=-1:360')
+             'duration may be a number in seconds, or in hh:mm:ss[.xxx] form')
     parser.add_argument(
         '-mainvf', metavar='filters',
         help='filters to preprocess main files, e.g. vflip,crop=800:600')
+    parser.add_argument(
+        '-refvf', metavar='filters',
+        help='filters to preprocess reference, e.g. scale=-1:360')
     parser.add_argument(
         '-fo', dest='ffmpegopts', metavar='ffmpegopts',
         help='additional raw FFmpeg options,\n'
              "e.g -fo='-frames 100' (equal sign is mandatory)")
     parser.add_argument(
         '-foi', dest='pre_ffmpegopts', metavar='ffmpegopts',
-        help='raw FFmpeg options to insert before first input\n'
-             "example: -foi='-loop 1' (equal sign is mandatory)")
+        help='raw FFmpeg options to insert before first input,\n'
+             "e.g. -foi='-loop 1' (equal sign is mandatory)")
     parser.add_argument(
         '-foi2', dest='pre_ffmpegopts2', metavar='ffmpegopts',
-        help='raw FFmpeg options to insert after first input\n'
-             "example: -foi2='-itsoffset 10' (equal sign is mandatory)")
+        help='raw FFmpeg options to insert after first input,\n'
+             "e.g. -foi2='-itsoffset 10' (equal sign is mandatory)")
     opts = parser.parse_args(ARGS)
     # Additional options processing.
     for inpath in opts.inpaths:
@@ -160,8 +154,6 @@ def get_opts():
                 opts.fps = float(opts.fps)
             except ValueError:
                 parser.error('bad fps')
-    if opts.duration is not None and opts.endpos is not None:
-        parser.error('-t and -to are mutually exclusive')
     return opts
 
 
@@ -238,8 +230,6 @@ def collect_logs(opts):
         ]
         if opts.duration is not None:
             ffargs += ['-t', opts.duration]
-        elif opts.endpos is not None:
-            ffargs += ['-to', opts.endpos]
         if opts.ffmpegopts is not None:
             ffargs += shlex.split(opts.ffmpegopts)
         ffargs += ['-f', 'null', '-']
