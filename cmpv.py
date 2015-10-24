@@ -331,7 +331,6 @@ def draw_graph(opts, metrics):
         ax.set_xlabel('Frame (n)', size=14)
     ax.set_ylabel('SSIM (dB)', size=14)
     ax.xaxis.get_major_ticks()[0].set_visible(False)
-    ax.xaxis.get_major_ticks()[-1].set_visible(False)
     ax.yaxis.get_major_ticks()[0].set_visible(False)
     ax.grid()
     ax.get_ygridlines()[-1].set_visible(False)
