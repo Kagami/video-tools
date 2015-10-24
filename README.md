@@ -14,11 +14,11 @@ Compare videos frame by frame and draw nice SSIM distribution graph.
 
 ```bash
 # Compare two videos using SSIM
-python {title} -ref orig.mkv 1.mkv 2.mkv
+python cmpv.py -ref orig.mkv 1.mkv 2.mkv
 # Fix ref resolution
-python {title} -ref orig.mkv -refvf scale=640:-1 1.mkv
+python cmpv.py -ref orig.mkv -refvf scale=640:-1 1.mkv
 # Show time on x axis
-python {title} -ref orig.mkv -r ntsc-film 1.mkv 2.mkv
+python cmpv.py -ref orig.mkv -r ntsc-film 1.mkv 2.mkv
 ```
 
 ### See also
