@@ -159,10 +159,10 @@ def get_opts():
 
 if _WIN32:
     def log_info(line):
-        print('[i] {}'.format(line))
+        print('[i] {}'.format(line), file=sys.stderr)
 
     def log_result(line):
-        print('==> {}'.format(line))
+        print('==> {}'.format(line), file=sys.stderr)
 else:
     class TERM_COLORS(object):
         green = '\033[32m'
@@ -173,13 +173,13 @@ else:
         print('{} i {} {}'.format(
             TERM_COLORS.bgblue,
             TERM_COLORS.reset,
-            line))
+            line), file=sys.stderr)
 
     def log_result(line):
         print('{}==>{} {}'.format(
             TERM_COLORS.green,
             TERM_COLORS.reset,
-            line))
+            line), file=sys.stderr)
 
 
 def collect_logs(opts):
