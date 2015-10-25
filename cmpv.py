@@ -239,9 +239,9 @@ def collect_logs(opts):
 def parse_log(opts, path, metric_type):
     def parse_line(line):
         n, ssimv, db = re.search(
-            r'\bn:(\d+).+'
-            r'\bAll:(\d+(?:\.\d+)?).+'
-            r'\s\((inf|\d+(?:\.\d+)?)\)',
+            r'\bn:(\d+)\s.*'
+            r'\bAll:(\d+(?:\.\d+)?)\s.*'
+            r'\((inf|\d+(?:\.\d+)?)\)',
             line).groups()
         return int(n), float(ssimv), float(db)
 
