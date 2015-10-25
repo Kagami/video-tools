@@ -115,14 +115,14 @@ def get_opts():
         '-o', dest='graphpath', metavar='graphpath', default='graph.png',
         help='destination graph path (default: %(default)s)')
     parser.add_argument(
+        '-t', dest='duration', metavar='duration',
+        help='limit the duration of data read from the input file\n'
+             'duration may be a number in seconds, or in hh:mm:ss[.xxx] form')
+    parser.add_argument(
         '-r', dest='fps', metavar='fps',
         help='show timestamps on graph instead of frame numbers\n'
              'using given video rate, e.g. ntsc-film, ntsc or just 60.0\n'
              'see ffmpeg-utils(1) for recognized list of abbreviations')
-    parser.add_argument(
-        '-t', dest='duration', metavar='duration',
-        help='limit the duration of data read from the input file\n'
-             'duration may be a number in seconds, or in hh:mm:ss[.xxx] form')
     parser.add_argument(
         '-mainvf', metavar='filters',
         help='filters to preprocess main files, e.g. vflip,crop=800:600')
@@ -134,13 +134,13 @@ def get_opts():
         help='additional raw FFmpeg options,\n'
              "e.g -fo='-frames 100' (equal sign is mandatory)")
     parser.add_argument(
-        '-foi', dest='pre_ffmpegopts', metavar='ffmpegopts',
-        help='raw FFmpeg options to insert before first input,\n'
-             "e.g. -foi='-loop 1' (equal sign is mandatory)")
+        '-mainfo', dest='main_ffmpegopts', metavar='ffmpegopts',
+        help='raw FFmpeg options to insert before main files,\n'
+             "e.g. -mainfo='-r 8' (equal sign is mandatory)")
     parser.add_argument(
-        '-foi2', dest='pre_ffmpegopts2', metavar='ffmpegopts',
-        help='raw FFmpeg options to insert after first input,\n'
-             "e.g. -foi2='-itsoffset 10' (equal sign is mandatory)")
+        '-reffo', dest='ref_ffmpegopts', metavar='ffmpegopts',
+        help='raw FFmpeg options to insert before reference,\n'
+             "e.g. -reffo='-itsoffset 10' (equal sign is mandatory)")
     opts = parser.parse_args(ARGS)
     # Additional options processing.
     for inpath in opts.inpaths:
@@ -196,6 +196,7 @@ def collect_logs(opts):
         if inpath.endswith('.log'):
             opts.logpaths.append(inpath)
             continue
+
         title = os.path.basename(inpath)
         title = os.path.splitext(title)[0]
         # FIXME: mkstemp may use our separator (-) in path too.
@@ -206,6 +207,15 @@ def collect_logs(opts):
         opts.logpaths.append(logpath)
         os.close(logfh)
 
+        # Input.
+        ffargs = ['-hide_banner', '-stats']
+        if opts.main_ffmpegopts is not None:
+            ffargs += shlex.split(opts.main_ffmpegopts)
+        ffargs += ['-i', inpath]
+        if opts.ref_ffmpegopts is not None:
+            ffargs += shlex.split(opts.ref_ffmpegopts)
+        ffargs += ['-i', opts.refpath]
+        # Filters.
         if opts.refvf is not None or opts.mainvf is not None:
             mainvf = 'null' if opts.mainvf is None else opts.mainvf
             refvf = 'null' if opts.refvf is None else opts.refvf
@@ -215,19 +225,10 @@ def collect_logs(opts):
         else:
             prevf = ''
         vf = prevf + "ssim=f='{}'".format(escape_ffarg(logpath))
-        ffargs = ['-hide_banner']
-        if opts.pre_ffmpegopts is not None:
-            ffargs += shlex.split(opts.pre_ffmpegopts)
-        ffargs += ['-i', inpath]
-        if opts.pre_ffmpegopts2 is not None:
-            ffargs += shlex.split(opts.pre_ffmpegopts2)
-        ffargs += [
-            '-i', opts.refpath,
-            '-loglevel', 'info' if opts.verbose else 'error',
-            '-stats',
-            '-map', 'v',
-            '-lavfi', vf,
-        ]
+        ffargs += ['-lavfi', vf]
+        # Other.
+        ffargs += ['-map', 'v']
+        ffargs += ['-loglevel', 'info' if opts.verbose else 'error']
         if opts.duration is not None:
             ffargs += ['-t', opts.duration]
         if opts.ffmpegopts is not None:
@@ -264,15 +265,15 @@ def parse_log(opts, path, metric_type):
         data = open(path, 'rb').read().decode('utf-8').strip()
         assert data, 'Empty log ({})'.format(path)
         lines = [parse_line(line) for line in data.split('\n')]
-        xdata = [line[0] for line in lines]
-        ydata = [line[2] for line in lines]
+        xs = [line[0] for line in lines]
+        ys = [line[2] for line in lines]
         msum = sum(line[1] for line in lines)
         mavg = ssim_db(msum, len(lines))
         return {
             'title': get_title(),
             'type': metric_type,
-            'xdata': xdata,
-            'ydata': ydata,
+            'xs': xs,
+            'ys': ys,
             'avg': mavg,
         }
     except Exception as exc:
@@ -298,26 +299,21 @@ def draw_graph(opts, metrics):
 
     # TODO: Allow custom labels, size, density, etc.
     fig, ax = plt.subplots(figsize=(20, 12))
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.tick_params(size=0, labelsize=11)
     for i, mdata in enumerate(metrics):
         assert mdata['type'] == 'SSIM', 'Unsupported metric'
         r, g, b = TABLEAU20_COLORS[i % len(TABLEAU20_COLORS)]
         color = r/255, g/255, b/255
-        xdata, ydata = mdata['xdata'], mdata['ydata']
-        if len(xdata) > MAX_POINTS:
-            ratio = int(len(xdata) / MAX_POINTS)
-            xdata = xdata[::ratio]
-            ydata = ydata[::ratio]
-        ax.plot(xdata, ydata, lw=2, color=color)
+        xs, ys = mdata['xs'], mdata['ys']
+        if len(xs) > MAX_POINTS:
+            ratio = int(len(xs) / MAX_POINTS)
+            xs = xs[::ratio]
+            ys = ys[::ratio]
+        ax.plot(xs, ys, lw=2, color=color)
         # FIXME: Detect overlapping.
-        ax.text(
-            xdata[-1] + 3, ydata[-1] - 0.05, mdata['title'],
-            color=color, size=11)
-        ax.text(
-            xdata[-1] + 3, ydata[-1] - 0.40, '{:.3f} avg'.format(mdata['avg']),
-            color=color, size=9)
+        ax.text(xs[-1] + 3, ys[-1] - 0.05, mdata['title'],
+                color=color, size=11)
+        ax.text(xs[-1] + 3, ys[-1] - 0.40, '{:.3f} avg'.format(mdata['avg']),
+                color=color, size=9)
     title = ' vs '.join(mdata['title'] for mdata in metrics)
     ax.set_title(title, size=19)
     ax.set_xlim(left=1)
@@ -332,6 +328,9 @@ def draw_graph(opts, metrics):
     ax.set_ylabel('SSIM (dB)', size=14)
     ax.xaxis.get_major_ticks()[0].set_visible(False)
     ax.yaxis.get_major_ticks()[0].set_visible(False)
+    ax.tick_params(size=0, labelsize=11)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
     ax.grid()
     ax.get_ygridlines()[-1].set_visible(False)
     return fig
