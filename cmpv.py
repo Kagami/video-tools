@@ -202,10 +202,10 @@ def collect_logs(opts):
         # FIXME: mkstemp may use our separator (-) in path too.
         prefix = 'cmpv-{}-'.format(title)
         logfh, logpath = tempfile.mkstemp(prefix=prefix, suffix='.log')
+        os.close(logfh)
+        opts.logpaths.append(logpath)
         log_info('{}: saving metrics to {}'.format(
             os.path.basename(inpath), logpath))
-        opts.logpaths.append(logpath)
-        os.close(logfh)
 
         # Input.
         ffargs = ['-hide_banner', '-stats']
