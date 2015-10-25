@@ -299,29 +299,27 @@ def draw_graph(opts, metrics):
 
     # TODO: Allow custom labels, size, density, etc.
     fig, ax = plt.subplots(figsize=(20, 12))
+    legends = []
+    max_x = 1
     for i, mdata in enumerate(metrics):
         assert mdata['type'] == 'SSIM', 'Unsupported metric'
         r, g, b = TABLEAU20_COLORS[i % len(TABLEAU20_COLORS)]
         color = r/255, g/255, b/255
         xs, ys = mdata['xs'], mdata['ys']
+        max_x = max(max_x, xs[-1])
         if len(xs) > MAX_POINTS:
             ratio = int(len(xs) / MAX_POINTS)
             xs = xs[::ratio]
             ys = ys[::ratio]
         ax.plot(xs, ys, lw=2, color=color)
-        # FIXME: Detect overlapping.
-        ax.text(xs[-1] + 3, ys[-1] - 0.05, mdata['title'],
-                color=color, size=11)
-        ax.text(xs[-1] + 3, ys[-1] - 0.40, '{:.3f} avg'.format(mdata['avg']),
-                color=color, size=9)
+        legends += ['{} ({:.3f} avg)'.format(mdata['title'], mdata['avg'])]
+    ax.legend(legends, loc='lower center', fontsize=13)
     title = ' vs '.join(mdata['title'] for mdata in metrics)
-    ax.set_title(title, size=19)
-    ax.set_xlim(left=1)
+    ax.set_title(title, size=19, y=1.01)
+    ax.set_xlim(1, max_x)
     if opts.fps is not None:
         fmt = mticker.FuncFormatter(timestamp)
         ax.xaxis.set_major_formatter(fmt)
-        loc = mticker.MaxNLocator(nbins=10)
-        ax.xaxis.set_major_locator(loc)
         ax.set_xlabel('Time (s)', size=14)
     else:
         ax.set_xlabel('Frame (n)', size=14)
@@ -329,10 +327,7 @@ def draw_graph(opts, metrics):
     ax.xaxis.get_major_ticks()[0].set_visible(False)
     ax.yaxis.get_major_ticks()[0].set_visible(False)
     ax.tick_params(size=0, labelsize=11)
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
     ax.grid()
-    ax.get_ygridlines()[-1].set_visible(False)
     return fig
 
 
