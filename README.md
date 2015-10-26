@@ -25,6 +25,8 @@ python cmpv.py -ref orig.mkv -r ntsc-film 1.mkv 2.mkv
 
 Example IPython notebook for drawing real fps (unique frames only) distribution graph across media file.
 
+![](https://raw.githubusercontent.com/Kagami/video-tools/assets/fps.png)
+
 ## See also
 
 * [webm.py wiki](https://github.com/Kagami/webm.py/wiki), contains few helper scripts
