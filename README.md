@@ -1,4 +1,4 @@
-### cmpv.py
+## cmpv.py
 
 Compare videos frame by frame and draw nice SSIM distribution graph.
 
@@ -10,7 +10,7 @@ Compare videos frame by frame and draw nice SSIM distribution graph.
 * [FFmpeg](https://ffmpeg.org/download.html) 2+
 * [matplotlib](http://matplotlib.org/)
 
-#### Examples
+#### Usage
 
 ```bash
 # Compare two videos using SSIM
@@ -21,16 +21,16 @@ python cmpv.py -ref orig.mkv -refvf scale=640:-1 1.mkv
 python cmpv.py -ref orig.mkv -r ntsc-film 1.mkv 2.mkv
 ```
 
-### [fps.ipynb](fps.ipynb)
+## [fps.ipynb](fps.ipynb)
 
 Example IPython notebook for drawing real fps (unique frames only) distribution graph across media file.
 
-### See also
+## See also
 
 * [webm.py wiki](https://github.com/Kagami/webm.py/wiki), contains some video-related info
 * [webm-thread tools](https://github.com/pituz/webm-thread/tree/master/tools)
 
-### License
+## License
 
 video-tools - Various video tools
 
