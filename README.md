@@ -21,6 +21,10 @@ python cmpv.py -ref orig.mkv -refvf scale=640:-1 1.mkv
 python cmpv.py -ref orig.mkv -r ntsc-film 1.mkv 2.mkv
 ```
 
+### [fps.ipynb](fps.ipynb)
+
+Example IPython notebook for drawing real fps (unique frames only) distribution graph across media file.
+
 ### See also
 
 * [webm.py wiki](https://github.com/Kagami/webm.py/wiki), contains some video-related info
