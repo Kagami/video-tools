@@ -27,7 +27,7 @@ Example IPython notebook for drawing real fps (unique frames only) distribution 
 
 ## See also
 
-* [webm.py wiki](https://github.com/Kagami/webm.py/wiki), contains some video-related info
+* [webm.py wiki](https://github.com/Kagami/webm.py/wiki), contains few helper scripts
 * [webm-thread tools](https://github.com/pituz/webm-thread/tree/master/tools)
 
 ## License
