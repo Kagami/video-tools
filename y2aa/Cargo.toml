@@ -1,0 +1,9 @@
+[package]
+name = "y2aa"
+version = "0.0.0"
+
+[dependencies]
+libc = "*"
+docopt = "0.6"
+rustc-serialize = "0.3"
+freetype-rs = "0.3"

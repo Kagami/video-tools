@@ -27,6 +27,26 @@ Example IPython notebook for drawing real fps (unique frames only) distribution 
 
 ![](https://raw.githubusercontent.com/Kagami/video-tools/assets/fps.png)
 
+## [y2aa](y2aa)
+
+Make ASCII-art version of provided image data.
+
+![](https://raw.githubusercontent.com/Kagami/video-tools/assets/y2aa.png)
+
+#### Requirements
+
+* [Rust](https://www.rust-lang.org/) 1+
+* [FreeType](http://freetype.org/) 2+
+* [aalib](http://aa-project.sourceforge.net/aalib/)
+
+#### Usage
+
+```bash
+ffmpeg -i in.mkv -f rawvideo -pix_fmt gray - |\
+  y2aa -w 1280 -h 720 - |\
+  ffmpeg -f rawvideo -pixel_format gray -video_size 1280x720 -i - out.mkv
+```
+
 ## See also
 
 * [webm.py wiki](https://github.com/Kagami/webm.py/wiki), contains few helper scripts
