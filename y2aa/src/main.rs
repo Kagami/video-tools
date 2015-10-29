@@ -33,8 +33,8 @@ Options:
   -w, --width=<w>       Video width, required.
   -h, --height=<h>      Video height, required.
   -f, --font=<f>        Path to the monospaced font, 8x13bold is default.
-                        Both Truetype and PCF are supported.
-  -s, --font-size=<fs>  Font size, required for Truetype fonts.
+                        Both TrueType and PCF are supported.
+  -s, --font-size=<fs>  Font size, required for TrueType fonts.
 
 Example:
   ffmpeg -i in.mkv -f rawvideo -pix_fmt gray - |\\
@@ -186,7 +186,7 @@ impl AaContext {
     fn resize(&mut self, src: &[u8]) {
         // FIXME: Result look awful, close to nearest. Fix that shit. And it's
         // better to use something like Lanczos.
-        // FIXME: Avoid bound checks.
+        // FIXME: Avoid bound checkings.
         let w1 = self.orig_width;
         let h1 = self.orig_height;
         let w2 = self.img_width;
@@ -251,6 +251,7 @@ const LAST_ASCII_NUM: usize = 126;  // "~"
 struct Font {
     /// Printable ASCII characters bitmap data (32-126).
     chars: Vec<Vec<u8>>,
+    /// Dimensions of each bitmap.
     width: usize,
     height: usize,
 }
@@ -317,7 +318,7 @@ impl Font {
         if v == 0 { 0 } else { 255 }
     }
 
-    // Partial port of FT_Bitmap_Convert from ftbitmap.c
+    /// Partial port of FT_Bitmap_Convert from ftbitmap.c
     fn mono2gray(src: &[u8], width: usize, rows: usize, pitch: usize) -> Vec<u8> {
         let mut dst = Vec::with_capacity(width * rows);
         for i in 0..rows {
@@ -367,8 +368,8 @@ impl Font {
         // +---+---+---+---+
         // | t | e | x | t | self.height
         // +---+---+---+---+
-        //   ^-- self.width
-        // FIXME: Avoid bound checks.
+        //   `-- self.width
+        // FIXME: Avoid bound checkings.
         for nline in 0..nlines {
             let line = &text[line_len*nline .. line_len*(nline+1)];
             for row in 0..self.height {
@@ -407,8 +408,7 @@ fn run() -> i32 {
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
     // TODO: It would be better to use e.g. u16 in struct and just let
-    // rust-serialize do the rest, but... it converts 65537 to 1.
-    // Report that shit to upstream.
+    // rust-serialize do the rest, but.. it converts 65537 to 1. Report that.
     if args.flag_width < 1 || args.flag_height < 1
         || args.flag_width > MAX_SIZE || args.flag_height > MAX_SIZE {
         printerr!("Bad dimensions.");
