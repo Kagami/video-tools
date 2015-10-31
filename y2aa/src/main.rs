@@ -145,7 +145,7 @@ struct AaContext {
 }
 
 impl AaContext {
-    fn init(
+    fn new(
         orig_width: usize, orig_height: usize,
         font_width: usize, font_height: usize,
     ) -> Option<AaContext> {
@@ -257,7 +257,7 @@ struct Font {
 }
 
 impl Font {
-    fn init(opath: Option<&str>, osize: Option<usize>) -> Option<Font> {
+    fn new(opath: Option<&str>, osize: Option<usize>) -> Option<Font> {
         let library = get!(ft::Library::init());
         let face = match opath {
             Some(path) => get!(library.new_face(path, 0)),
@@ -427,14 +427,14 @@ fn run() -> i32 {
     };
     let mut outfh = io::stdout();
     let font_path = args.flag_font.as_ref().map(String::as_ref);
-    let font = match Font::init(font_path, args.flag_font_size) {
+    let font = match Font::new(font_path, args.flag_font_size) {
         Some(f) => f,
         _ => {
             printerr!("Can't initialize freetype.");
             return 2;
         },
     };
-    let mut aactx = match AaContext::init(
+    let mut aactx = match AaContext::new(
         args.flag_width, args.flag_height,
         font.get_width(), font.get_height(),
     ) {
