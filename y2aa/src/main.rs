@@ -3,6 +3,7 @@ extern crate freetype;
 extern crate rustc_serialize;
 extern crate docopt;
 
+use std::f32;
 use std::io;
 use std::io::Read;
 use std::io::Write;
@@ -127,19 +128,13 @@ extern {
 
 struct AaContext {
     ctx: *mut aa_context,
+    resizer: Resizer,
     /// Size of the input frames.
     orig_width: usize,
     orig_height: usize,
     /// Text buffer size.
     scr_width: usize,
     scr_height: usize,
-    /// Size we need to resize passed frame into.
-    /// Note that we don't keep aspect since font aspect usually is not 1:1.
-    /// But output image will look ok since aalib transforms 2x2 image pixels
-    /// into one character. E.g. for 8x13 font and 1280x720 input frame:
-    /// 1280x720 -> 320x110 -> 160x55 (text) -> 160*8x55*13 -> 1280x715.
-    img_width: usize,
-    img_height: usize,
     /// Scaled image buffer.
     img: Vec<u8>,
 }
@@ -151,8 +146,15 @@ impl AaContext {
     ) -> Option<AaContext> {
         let scr_width = orig_width / font_width;
         let scr_height = orig_height / font_height;
+        // Size we need to resize passed frame into.
+        // Note that we don't keep aspect since font aspect usually is not
+        // 1:1. But output image will look ok since aalib transforms 2x2 image
+        // pixels into one character. E.g. for 8x13 font and 1280x720 input
+        // frame: 1280x720 -> 320x110 -> 160x55(text) -> 160*8x55*13 ->
+        // 1280x715.
         let img_width = scr_width * 2;
         let img_height = scr_height * 2;
+        let resizer = Resizer::new(orig_width, orig_height, img_width, img_height);
         let img = vec![0;img_width*img_height];
         let mut params = aa_defparams.clone();
         params.width = scr_width as c_int;
@@ -168,58 +170,20 @@ impl AaContext {
                 debug_assert_eq!(aa_imgheight(ctx), img_height as c_int);
                 Some(AaContext {
                     ctx: ctx,
+                    resizer: resizer,
                     orig_width: orig_width,
                     orig_height: orig_height,
                     scr_width: scr_width,
                     scr_height: scr_height,
-                    img_width: img_width,
-                    img_height: img_height,
                     img: img,
                 })
             }
         }
     }
 
-    /// Resample passed gray image frame into preallocated buffer.
-    /// Currently bilinear and unoptimized, based on
-    /// <http://tech-algorithm.com/articles/bilinear-image-scaling/>.
-    fn resize(&mut self, src: &[u8]) {
-        // FIXME: Result look awful, close to nearest. Fix that shit. And it's
-        // better to use something like Lanczos.
-        // FIXME: Avoid bound checkings.
-        let w1 = self.orig_width;
-        let h1 = self.orig_height;
-        let w2 = self.img_width;
-        let h2 = self.img_height;
-        let dst = &mut self.img;
-        let x_ratio = w1 as f32 / w2 as f32;
-        let y_ratio = h1 as f32 / h2 as f32;
-        let mut dst_index = 0;
-        for i in 0..h2 {
-            let y = (y_ratio * i as f32) as usize;
-            let y_frac = (y_ratio * i as f32) % 1.0;
-            let y_frac_neg = 1.0 - y_frac;
-            for j in 0..w2 {
-                let x = (x_ratio * j as f32) as usize;
-                let x_frac = (x_ratio * j as f32) % 1.0;
-                let x_frac_neg = 1.0 - x_frac;
-                let src_index = y * w1 + x;
-                let a = src[src_index] as f32;
-                let b = src[src_index+1] as f32;
-                let c = src[src_index+w1] as f32;
-                let d = src[src_index+w1+1] as f32;
-                let gray =
-                    (a * y_frac_neg + b * y_frac) * x_frac_neg +
-                    (c * y_frac_neg + d * y_frac) * x_frac;
-                dst[dst_index] = gray as u8;
-                dst_index += 1;
-            }
-        }
-    }
-
     fn render(&mut self, frame: &[u8]) -> &[u8] {
         debug_assert_eq!(frame.len(), self.orig_width * self.orig_height);
-        self.resize(frame);
+        self.resizer.run(frame, &mut self.img);
         unsafe {
             let vram = aa_image(self.ctx) as *mut u8;
             ptr::copy_nonoverlapping(self.img.as_ptr(), vram, self.img.len());
@@ -242,6 +206,154 @@ impl Drop for AaContext {
         unsafe {
             aa_close(self.ctx);
         }
+    }
+}
+
+/// Simple resampler with preallocated buffers and coeffecients for the given
+/// dimensions. See also:
+/// * https://github.com/sekrit-twc/zimg/tree/master/src/zimg/resize
+/// * https://github.com/PistonDevelopers/image/blob/master/src/imageops/sample.rs
+struct Resizer {
+    /// Source/target dimensions.
+    w1: usize,
+    w2: usize,
+    h2: usize,
+    /// Temporary/preallocated stuff.
+    tmp: Vec<u8>,
+    coeffs_w: Vec<CoeffsLine>,
+    coeffs_h: Vec<CoeffsLine>,
+}
+
+struct CoeffsLine {
+    left: usize,
+    data: Vec<f32>,
+}
+
+impl Resizer {
+    fn new(w1: usize, h1: usize, w2: usize, h2: usize) -> Resizer {
+        Resizer {
+            w1: w1,
+            w2: w2,
+            h2: h2,
+            tmp: vec![0;w1*h2],
+            coeffs_w: Self::calc_coeffs(w1, w2),
+            coeffs_h: Self::calc_coeffs(h1, h2),
+        }
+    }
+
+    fn calc_coeffs(s1: usize, s2: usize) -> Vec<CoeffsLine> {
+        // Use only fixed kernel for now.
+        let filter_kernel = Self::lanczos3_kernel;
+        let filter_support = 3.0;
+        let ratio = s1 as f32 / s2 as f32;
+        // Scale the filter when downsampling.
+        let filter_scale = if ratio > 1.0 { ratio } else { 1.0 };
+        let filter_radius = (filter_support * filter_scale).ceil();
+        let mut coeffs = Vec::with_capacity(s2);
+        for x2 in 0..s2 {
+            let x1 = (x2 as f32 + 0.5) * ratio;
+            let left = (x1 - filter_radius).ceil() as isize;
+            let left = Self::clamp(left, 0, s1 as isize - 1) as usize;
+            let right = (x1 + filter_radius).floor() as isize;
+            let right = Self::clamp(right, 0, s1 as isize - 1) as usize;
+            let mut data = Vec::with_capacity(right - left + 1);
+            let mut sum = 0.0;
+            for i in left..right+1 {
+                sum += filter_kernel((i as f32 - x1) / filter_scale);
+            }
+            for i in left..right+1 {
+                let v = filter_kernel((i as f32 - x1) / filter_scale);
+                data.push(v / sum);
+            }
+            coeffs.push(CoeffsLine {left: left, data: data});
+        }
+        coeffs
+    }
+
+    // #[inline]
+    // fn triangle_kernel(x: f32) -> f32 {
+    //     f32::max(1.0 - x, 0.0)
+    // }
+
+    #[inline]
+    fn sinc(x: f32) -> f32 {
+        if x == 0.0 {
+            1.0
+        } else {
+            let a = x * f32::consts::PI;
+            a.sin() / a
+        }
+    }
+
+    #[inline]
+    fn lanczos3_kernel(x: f32) -> f32 {
+        if x.abs() < 3.0 {
+            Self::sinc(x) * Self::sinc(x / 3.0)
+        } else {
+            0.0
+        }
+    }
+
+    #[inline]
+    fn clamp<N: PartialOrd>(v: N, min: N, max: N) -> N {
+        if v < min {
+            min
+        } else if v > max {
+            max
+        } else {
+            v
+        }
+    }
+
+    /// Branchless clamp. See libyuv/source/row_common.cc
+    #[inline]
+    fn pack_u8(v: f32) -> u8 {
+        let mut v = v as isize;
+        v = (-v >> 31) & v;
+        v = (((255 - v) >> 31) | v) & 255;
+        v as u8
+    }
+
+    /// Resample W1xH1 to W1xH2.
+    fn sample_rows(&mut self, src: &[u8]) {
+        // FIXME: Avoid bound checkings.
+        let mut offset = 0;
+        for x1 in 0..self.w1 {
+            for y2 in 0..self.h2 {
+                let ref line = self.coeffs_h[y2];
+                let mut accum = 0.0;
+                for (i, coeff) in line.data.iter().enumerate() {
+                    let y0 = line.left + i;
+                    let p = src[y0*self.w1 + x1] as f32;
+                    accum += p * coeff;
+                }
+                self.tmp[offset] = Self::pack_u8(accum);
+                offset += 1;
+            }
+        }
+    }
+
+    /// Resample W1xH2 to W2xH2.
+    fn sample_cols(&self, dst: &mut [u8]) {
+        let mut offset = 0;
+        for y2 in 0..self.h2 {
+            for x2 in 0..self.w2 {
+                let ref line = self.coeffs_w[x2];
+                let mut accum = 0.0;
+                for (i, coeff) in line.data.iter().enumerate() {
+                    let x0 = line.left + i;
+                    let p = self.tmp[x0*self.h2 + y2] as f32;
+                    accum += p * coeff;
+                }
+                dst[offset] = Self::pack_u8(accum);
+                offset += 1;
+            }
+        }
+    }
+
+    fn run(&mut self, src: &[u8], dst: &mut [u8]) {
+        self.sample_rows(src);
+        self.sample_cols(dst)
     }
 }
 
