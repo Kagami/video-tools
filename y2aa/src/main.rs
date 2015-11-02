@@ -557,6 +557,7 @@ fn run() -> i32 {
     let bufsize = args.flag_width * args.flag_height * BYTE_DEPTH;
     let mut frame = vec![0;bufsize];
     loop {
+        // TODO: Use read_exact.
         let mut collected = 0;
         while collected < bufsize {
             match infh.read(&mut frame[collected..]) {
@@ -578,7 +579,7 @@ fn run() -> i32 {
         }
         let text = aactx.render(&frame);
         font.render(text, args.flag_width, args.flag_height, &mut frame);
-        match outfh.write(&frame) {
+        match outfh.write_all(&frame) {
             Ok(_) => {},
             Err(err) => {
                 printerr!("Can't write to stdout: {}", err);
