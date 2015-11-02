@@ -251,7 +251,7 @@ impl Resizer {
         let filter_radius = (filter_support * filter_scale).ceil();
         let mut coeffs = Vec::with_capacity(s2);
         for x2 in 0..s2 {
-            let x1 = (x2 as f32 + 0.5) * ratio;
+            let x1 = (x2 as f32 + 0.5) * ratio - 0.5;
             let left = (x1 - filter_radius).ceil() as isize;
             let left = Self::clamp(left, 0, s1 as isize - 1) as usize;
             let right = (x1 + filter_radius).floor() as isize;
@@ -272,7 +272,7 @@ impl Resizer {
 
     // #[inline]
     // fn triangle_kernel(x: f32) -> f32 {
-    //     f32::max(1.0 - x, 0.0)
+    //     f32::max(1.0 - x.abs(), 0.0)
     // }
 
     #[inline]
@@ -296,9 +296,9 @@ impl Resizer {
 
     #[inline]
     fn clamp<N: PartialOrd>(v: N, min: N, max: N) -> N {
-        if v < min {
+        if v <= min {
             min
-        } else if v > max {
+        } else if v >= max {
             max
         } else {
             v
@@ -308,7 +308,7 @@ impl Resizer {
     /// Branchless clamp. See libyuv/source/row_common.cc
     #[inline]
     fn pack_u8(v: f32) -> u8 {
-        let mut v = v as isize;
+        let mut v = v.round() as i32;
         v = (-v >> 31) & v;
         v = (((255 - v) >> 31) | v) & 255;
         v as u8
