@@ -305,12 +305,10 @@ impl Resizer {
         }
     }
 
-    /// Branchless clamp. See libyuv/source/row_common.cc
     #[inline]
     fn pack_u8(v: f32) -> u8 {
-        let mut v = v.round() as i32;
-        v = (-v >> 31) & v;
-        v = (((255 - v) >> 31) | v) & 255;
+        let mut v = v.round();
+        v = f32::min(f32::max(v, 0.0), 255.0);
         v as u8
     }
 
