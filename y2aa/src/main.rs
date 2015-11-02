@@ -219,7 +219,7 @@ struct Resizer {
     w2: usize,
     h2: usize,
     /// Temporary/preallocated stuff.
-    tmp: Vec<u8>,
+    tmp: Vec<f32>,
     coeffs_w: Vec<CoeffsLine>,
     coeffs_h: Vec<CoeffsLine>,
 }
@@ -235,7 +235,7 @@ impl Resizer {
             w1: w1,
             w2: w2,
             h2: h2,
-            tmp: vec![0;w1*h2],
+            tmp: vec![0.0;w1*h2],
             coeffs_w: Self::calc_coeffs(w1, w2),
             coeffs_h: Self::calc_coeffs(h1, h2),
         }
@@ -327,7 +327,7 @@ impl Resizer {
                     let p = src[y0*self.w1 + x1] as f32;
                     accum += p * coeff;
                 }
-                self.tmp[offset] = Self::pack_u8(accum);
+                self.tmp[offset] = accum;
                 offset += 1;
             }
         }
@@ -342,7 +342,7 @@ impl Resizer {
                 let mut accum = 0.0;
                 for (i, coeff) in line.data.iter().enumerate() {
                     let x0 = line.left + i;
-                    let p = self.tmp[x0*self.h2 + y2] as f32;
+                    let p = self.tmp[x0*self.h2 + y2];
                     accum += p * coeff;
                 }
                 dst[offset] = Self::pack_u8(accum);
