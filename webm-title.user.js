@@ -89,4 +89,4 @@ function initObserver() {
 
 // Makaba API. We need to run _after_ "screenexpand" routine.
 // It runs on DOMContentLoaded but Greasemonkey injects callback earlier.
-window.Stage("Show webm title", "webmtitle", Stage.DOMREADY, initObserver);
+window.Stage("Show webm title", "webmtitle", window.Stage.DOMREADY, initObserver);
