@@ -5,7 +5,8 @@
 // @downloadURL https://raw.githubusercontent.com/Kagami/video-tools/master/webm-title.user.js
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/webm-title.user.js
 // @include     https://2ch.hk/*
-// @version     0.0.3
+// @include     https://2ch.pm/*
+// @version     0.0.4
 // @grant       none
 // ==/UserScript==
 
