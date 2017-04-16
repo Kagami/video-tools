@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.1
+// @version     0.0.2
 // @grant       none
 // ==/UserScript==
 
@@ -30,7 +30,6 @@ function embedVideo(link) {
   link.parentNode.replaceChild(video, link);
 }
 
-// TODO: Handle OP post.
 function handlePost(post) {
   var links = post.querySelectorAll("a[target=_blank]");
   Array.prototype.filter.call(links, function(link) {
@@ -40,8 +39,8 @@ function handlePost(post) {
   }).forEach(embedVideo);
 }
 
-function handleContent(content) {
-  var container = content.querySelector(".thread-tree");
+// TODO: Handle OP post.
+function handleThread(container) {
   var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
       Array.prototype.filter.call(mutation.addedNodes, function(node) {
@@ -55,15 +54,15 @@ function handleContent(content) {
 
 function handleApp(container) {
   var observer = new MutationObserver(function(mutations) {
-    mutations.find(function(mutation) {
-      if (mutation.target.id === "content") {
-        observer.disconnect();
-        handleContent(mutation.target);
-        return true;
-      }
+    // XXX: $bus is not yet available on DOMContentLoaded so wait for
+    // the first mutation.
+    observer.disconnect();
+    window.app.$bus.on("refreshContentDone", function() {
+      // TODO: Handle multiple threads.
+      handleThread(document.querySelector(".thread-tree"));
     });
   });
-  observer.observe(container, {childList: true, subtree: true});
+  observer.observe(container, {childList: true});
 }
 
 handleApp(document.body);
