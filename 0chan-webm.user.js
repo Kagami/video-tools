@@ -21,7 +21,7 @@ function embedVideo(link) {
 
   video.style.display = "block";
   video.style.width = "100%";
-  video.style.maxHeight = "400px";
+  video.style.maxHeight = "350px";
 
   video.loop = true;
   video.controls = true;
