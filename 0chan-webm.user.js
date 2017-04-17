@@ -6,15 +6,18 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.4
+// @version     0.0.5
 // @grant       none
 // ==/UserScript==
 
-// TODO: https://github.com/tsudoko/long-live-pomf/blob/master/long-live-pomf.md
-var ALLOWED_LINKS = [
-  /^https?:\/\/my\.mixtape\.moe\/.+\.webm$/,
-  /^https?:\/\/u\.nya\.is\/.+\.webm$/,
+var ALLOWED_HOSTS = [
+  "my.mixtape.moe", "u.nya.is",
+  "a.safe.moe", "a.pomf.cat",
+  "0x0.st",
 ];
+var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(h) {
+  return new RegExp("^https?://" + h.replace(/\./g, "\\.") + "/.+\\.webm$");
+});
 
 function embedVideo(link) {
   var video = document.createElement("video");
