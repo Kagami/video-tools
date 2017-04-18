@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.1.9
+// @version     0.2.0
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -92,7 +92,7 @@ function loadVideo(videoData) {
     vid.addEventListener("error", function() {
       reject(new Error("failed to load"));
     });
-    vid.addEventListener("loadedmetadata", function() {
+    vid.addEventListener("loadeddata", function() {
       resolve(vid);
     });
     vid.src = URL.createObjectURL(videoData);
@@ -100,32 +100,13 @@ function loadVideo(videoData) {
 }
 
 function getVideoScreenshot(vid) {
-  var HAVE_METADATA = 1;
-  var HAVE_CURRENT_DATA = 2;
   return new Promise(function(resolve, reject) {
-    var makeScreenshot = function() {
-      var c = document.createElement("canvas");
-      var ctx = c.getContext("2d");
-      try {
-        c.width = vid.videoWidth;
-        c.height = vid.videoHeight;
-        ctx.drawImage(vid, 0, 0, c.width, c.height);
-      } catch (e) {
-        reject(new Error("failed to decode"));
-        return;
-      }
-      resolve(c.toDataURL("image/png", 1.0));
-    };
-
-    if (vid.readyState >= HAVE_CURRENT_DATA) {
-      makeScreenshot();
-    } else if (vid.readyState === HAVE_METADATA) {
-      vid.addEventListener("error", reject);
-      vid.addEventListener("seeked", makeScreenshot);
-      vid.currentTime = 0;
-    } else {
-      reject(new Error("no video data"));
-    }
+    var c = document.createElement("canvas");
+    var ctx = c.getContext("2d");
+    c.width = vid.videoWidth;
+    c.height = vid.videoHeight;
+    ctx.drawImage(vid, 0, 0, c.width, c.height);
+    resolve(c.toDataURL("image/png", 1.0));
   });
 }
 
