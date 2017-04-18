@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.1.5
+// @version     0.1.6
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -87,7 +87,10 @@ function loadVideo(videoData) {
     var vid = document.createElement("video");
     vid.muted = true;
     vid.autoplay = false;
-    vid.addEventListener("error", reject);
+    vid.addEventListener("error", function() {
+      // err.message is empty for these kind of errors.
+      reject(new Error("failed to load video"));
+    });
     vid.addEventListener("loadedmetadata", function() {
       resolve(vid);
     });
@@ -121,7 +124,7 @@ function getVideoScreenshot(vid) {
         vid.addEventListener("seeked", makeScreenshot);
         vid.currentTime = timePos;
       } else {
-        reject(new Error());
+        reject(new Error("no video data"));
       }
     } else {
       vid.addEventListener("error", reject);
@@ -131,56 +134,64 @@ function getVideoScreenshot(vid) {
   });
 }
 
+function createVideoElement(link, thumbnail) {
+  var div = document.createElement("div");
+  div.className = "post-img";
+
+  var vid = document.createElement("video");
+  vid.style.display = "block";
+  vid.style.maxWidth = "200px";
+  vid.style.maxHeight = "350px";
+  vid.style.cursor = "pointer";
+  vid.poster = thumbnail;
+  vid.preload = "none";
+  vid.loop = true;
+  vid.controls = false;
+  vid.addEventListener("click", function() {
+    if (vid.controls) {
+      vid[vid.paused ? "play" : "pause"]();
+    } else {
+      close.style.display = "block";
+      vid.style.maxWidth = "none";
+      vid.controls = true;
+      vid.play();
+    }
+  });
+  vid.src = link.href;
+
+  var close = document.createElement("div");
+  var span = document.createElement("span");
+  var i = document.createElement("i");
+  close.className = "post-img-buttons";
+  span.className = "post-img-button";
+  i.className = "fa fa-times";
+  close.style.display = "none";
+  close.addEventListener("click", function() {
+    close.style.display = "none";
+    vid.controls = false;
+    vid.style.maxWidth = "200px";
+    vid.load();
+  });
+
+  div.appendChild(vid);
+  span.appendChild(i);
+  close.appendChild(span);
+  div.appendChild(close);
+  return div;
+}
+
 function embedVideo(link) {
   loadVideoDataFromURL(link.href)
-  .then(loadVideo)
-  .then(getVideoScreenshot)
-  .then(makeThumbnail)
-  .then(function(thumbnail) {
-    var div = document.createElement("div");
-    div.className = "post-img";
-
-    var vid = document.createElement("video");
-    vid.style.display = "block";
-    vid.style.maxWidth = "200px";
-    vid.style.maxHeight = "350px";
-    vid.style.cursor = "pointer";
-    vid.poster = thumbnail;
-    vid.preload = "none";
-    vid.loop = true;
-    vid.controls = false;
-    vid.addEventListener("click", function() {
-      if (vid.controls) {
-        vid[vid.paused ? "play" : "pause"]();
-      } else {
-        close.style.display = "block";
-        vid.style.maxWidth = "none";
-        vid.controls = true;
-        vid.play();
-      }
+    .then(loadVideo)
+    .then(getVideoScreenshot)
+    .then(makeThumbnail)
+    .then(function(thumbnail) {
+      var div = createVideoElement(link, thumbnail);
+      link.parentNode.replaceChild(div, link);
+    }).catch(function(err) {
+      console.error("[0chan-webm] Failed to embed " + link.href +
+                    " : " + err.message);
     });
-    vid.src = link.href;
-
-    var close = document.createElement("div");
-    var span = document.createElement("span");
-    var i = document.createElement("i");
-    close.className = "post-img-buttons";
-    span.className = "post-img-button";
-    i.className = "fa fa-times";
-    close.style.display = "none";
-    close.addEventListener("click", function() {
-      close.style.display = "none";
-      vid.controls = false;
-      vid.style.maxWidth = "200px";
-      vid.load();
-    });
-
-    div.appendChild(vid);
-    span.appendChild(i);
-    close.appendChild(span);
-    div.appendChild(close);
-    link.parentNode.replaceChild(div, link);
-  });
 }
 
 function handlePost(post) {
