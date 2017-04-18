@@ -17,6 +17,7 @@
 // @connect     0x0.st
 // ==/UserScript==
 
+var THUMB_SIZE = 200;
 var ALLOWED_HOSTS = [
   "my.mixtape.moe", "u.nya.is",
   "a.safe.moe", "a.pomf.cat",
@@ -27,18 +28,18 @@ var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(h) {
   return new RegExp("^https?://" + h.replace(/\./g, "\\.") + "/.+\\.webm$");
 });
 
-function makeThumbnail(imageData, maxSize) {
+function makeThumbnail(screenshot) {
   return new Promise(function(resolve, reject) {
     var img = document.createElement("img");
-    img.addEventListener("load", function (e) {
+    img.addEventListener("load", function () {
       var c = document.createElement("canvas");
       var ctx = c.getContext("2d");
       if (img.width > img.height) {
-        c.width = maxSize;
-        c.height = (img.height*maxSize) / img.width;
+        c.width = THUMB_SIZE;
+        c.height = (img.height*THUMB_SIZE) / img.width;
       } else {
-        c.width = (img.width*maxSize) / img.height;
-        c.height = maxSize;
+        c.width = (img.width*THUMB_SIZE) / img.height;
+        c.height = THUMB_SIZE;
       }
       ctx.mozImageSmoothingEnabled = true;
       ctx.webkitImageSmoothingEnabled = true;
@@ -47,7 +48,7 @@ function makeThumbnail(imageData, maxSize) {
       ctx.drawImage(img, 0, 0, c.width, c.height);
       var arrow = "\u25B6";
       var circle = "\u26AB";
-      var textHeight = maxSize / 4;
+      var textHeight = THUMB_SIZE / 4;
       ctx.font = textHeight + "px Arial";
       ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
       var textWidth = ctx.measureText(circle).width;
@@ -60,7 +61,7 @@ function makeThumbnail(imageData, maxSize) {
       resolve(c.toDataURL("image/png", 1.0));
     });
     img.addEventListener("error", reject);
-    img.src = imageData;
+    img.src = screenshot;
   });
 }
 
@@ -140,10 +141,10 @@ function embedVideo(link) {
   loadVideoDataFromURL(link.href)
   .then(loadVideo)
   .then(getVideoScreenshot)
-  .then(function(screenshot) {
-    return makeThumbnail(screenshot, 200);
-  }).then(function(thumbnail) {
+  .then(makeThumbnail)
+  .then(function(thumbnail) {
     var vid = document.createElement("video");
+
     vid.style.display = "block";
     vid.style.maxWidth = "200px";
     vid.style.maxHeight = "350px";
@@ -153,11 +154,10 @@ function embedVideo(link) {
     vid.loop = true;
     vid.controls = false;
     vid.src = link.href;
-
     vid.addEventListener("click", function(event) {
-      if (!event.target.controls) event.target.play();
-      event.target.controls = true;
-      event.target.style.maxWidth = "none";
+      if (!vid.controls) vid.play();
+      vid.controls = true;
+      vid.style.maxWidth = "none";
     });
 
     link.parentNode.replaceChild(vid, link);
