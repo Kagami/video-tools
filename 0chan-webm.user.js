@@ -84,7 +84,7 @@ function loadVideoDataFromURL(url) {
   });
 }
 
-function loadVideo(video_data) {
+function loadVideo(videoData) {
   return new Promise(function(resolve, reject) {
     var vid = document.createElement("video");
     vid.muted = true;
@@ -93,7 +93,7 @@ function loadVideo(video_data) {
     vid.addEventListener("loadedmetadata", function() {
       resolve(vid);
     });
-    vid.src = URL.createObjectURL(video_data);
+    vid.src = URL.createObjectURL(videoData);
   });
 }
 
