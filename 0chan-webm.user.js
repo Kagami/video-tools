@@ -6,10 +6,10 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.1.2
+// @version     0.1.3
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
-// @connect     my.mixtape.moe
+// @connect     mixtape.moe
 // @connect     u.nya.is
 // @connect     a.safe.moe
 // @connect     a.pomf.cat
@@ -19,7 +19,7 @@
 
 var THUMB_SIZE = 200;
 var ALLOWED_HOSTS = [
-  "my.mixtape.moe", "u.nya.is",
+  "[a-z0-9]+.mixtape.moe", "u.nya.is",
   "a.safe.moe", "a.pomf.cat",
   "[a-z]+.gfycat.com",
   "0x0.st",
