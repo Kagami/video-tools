@@ -27,18 +27,18 @@ var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(h) {
   return new RegExp("^https?://" + h.replace(/\./g, "\\.") + "/.+\\.webm$");
 });
 
-function makeThumbnail(image_data, max_size) {
+function makeThumbnail(imageData, maxSize) {
   return new Promise(function(resolve, reject) {
     var img = document.createElement("img");
     img.addEventListener("load", function (e) {
       var c = document.createElement("canvas");
       var ctx = c.getContext("2d");
       if (img.width > img.height) {
-        c.width = max_size;
-        c.height = (img.height*max_size) / img.width;
+        c.width = maxSize;
+        c.height = (img.height*maxSize) / img.width;
       } else {
-        c.width = (img.width*max_size) / img.height;
-        c.height = max_size;
+        c.width = (img.width*maxSize) / img.height;
+        c.height = maxSize;
       }
       ctx.mozImageSmoothingEnabled = true;
       ctx.webkitImageSmoothingEnabled = true;
@@ -47,20 +47,20 @@ function makeThumbnail(image_data, max_size) {
       ctx.drawImage(img, 0, 0, c.width, c.height);
       var arrow = "\u25B6";
       var circle = "\u26AB";
-      var text_height = max_size/4;
-      ctx.font = text_height + "px Arial";
+      var textHeight = maxSize / 4;
+      ctx.font = textHeight + "px Arial";
       ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-      var text_width = ctx.measureText(circle).width;
-      ctx.fillText(circle, c.width/2 - text_width*0.55, c.height/2 + text_height*0.45);
-      text_height /= 2;
-      ctx.font = text_height + "px Arial";
+      var textWidth = ctx.measureText(circle).width;
+      ctx.fillText(circle, c.width/2 - textWidth*0.55, c.height/2 + textHeight*0.45);
+      textHeight /= 2;
+      ctx.font = textHeight + "px Arial";
       ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-      text_width = ctx.measureText(arrow).width;
-      ctx.fillText(arrow, c.width/2 - text_width/2, c.height/2 + text_height/2);
+      textWidth = ctx.measureText(arrow).width;
+      ctx.fillText(arrow, c.width/2 - textWidth/2, c.height/2 + textHeight/2);
       resolve(c.toDataURL("image/png", 1.0));
     });
     img.addEventListener("error", reject);
-    img.src = image_data;
+    img.src = imageData;
   });
 }
 
