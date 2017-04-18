@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.8
+// @version     0.0.9
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     my.mixtape.moe
@@ -34,6 +34,10 @@ function makeThumbnail(screenshot) {
     img.addEventListener("load", function () {
       var c = document.createElement("canvas");
       var ctx = c.getContext("2d");
+      var arrow = "\u25B6";
+      var circle = "\u26AB";
+      var textWidth = 0;
+      var textHeight = THUMB_SIZE / 4;
       if (img.width > img.height) {
         c.width = THUMB_SIZE;
         c.height = (img.height*THUMB_SIZE) / img.width;
@@ -41,20 +45,13 @@ function makeThumbnail(screenshot) {
         c.width = (img.width*THUMB_SIZE) / img.height;
         c.height = THUMB_SIZE;
       }
-      ctx.mozImageSmoothingEnabled = true;
-      ctx.webkitImageSmoothingEnabled = true;
-      ctx.msImageSmoothingEnabled = true;
-      ctx.imageSmoothingEnabled = true;
       ctx.drawImage(img, 0, 0, c.width, c.height);
-      var arrow = "\u25B6";
-      var circle = "\u26AB";
-      var textHeight = THUMB_SIZE / 4;
-      ctx.font = textHeight + "px Arial";
+      ctx.font = textHeight + "px sans-serif";
       ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-      var textWidth = ctx.measureText(circle).width;
+      textWidth = ctx.measureText(circle).width;
       ctx.fillText(circle, c.width/2 - textWidth*0.55, c.height/2 + textHeight*0.45);
       textHeight /= 2;
-      ctx.font = textHeight + "px Arial";
+      ctx.font = textHeight + "px sans-serif";
       ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
       textWidth = ctx.measureText(arrow).width;
       ctx.fillText(arrow, c.width/2 - textWidth/2, c.height/2 + textHeight/2);
@@ -103,10 +100,6 @@ function getVideoScreenshot(vid) {
     var makeScreenshot = function() {
       var c = document.createElement("canvas");
       var ctx = c.getContext("2d");
-      ctx.mozImageSmoothingEnabled = true;
-      ctx.webkitImageSmoothingEnabled = true;
-      ctx.msImageSmoothingEnabled = true;
-      ctx.imageSmoothingEnabled = true;
       try {
         c.width = vid.videoWidth;
         c.height = vid.videoHeight;
