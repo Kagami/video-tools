@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.1.4
+// @version     0.1.5
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -70,7 +70,7 @@ function loadVideoDataFromURL(url) {
       responseType: "blob",
       url: url,
       headers: {
-        Range: "bytes=0-200000"  // Should be enough to get first frame
+        Range: "bytes=0-250000"  // Should be enough to get first frame
       },
       onload: function(response) {
         resolve(response.response);
