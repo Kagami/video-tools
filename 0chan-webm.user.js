@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.7
+// @version     0.0.8
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     my.mixtape.moe
@@ -186,15 +186,17 @@ function handleThread(container) {
   Array.prototype.forEach.call(container.children, handlePost);
 }
 
+unsafeWindow.webmHandler = exportFunction(function() {
+  // TODO: Handle multiple threads.
+  handleThread(document.querySelector(".thread-tree"));
+}, unsafeWindow);
+
 function handleApp(container) {
   var observer = new MutationObserver(function(mutations) {
     // XXX: $bus is not yet available on DOMContentLoaded so wait for
     // the first mutation.
     observer.disconnect();
-    unsafeWindow.app.$bus.on("refreshContentDone", function() {
-      // TODO: Handle multiple threads.
-      handleThread(document.querySelector(".thread-tree"));
-    });
+    unsafeWindow.app.$bus.on("refreshContentDone", unsafeWindow.webmHandler);
   });
   observer.observe(container, {childList: true});
 }
