@@ -6,13 +6,14 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.5
+// @version     0.0.6
 // @grant       none
 // ==/UserScript==
 
 var ALLOWED_HOSTS = [
   "my.mixtape.moe", "u.nya.is",
   "a.safe.moe", "a.pomf.cat",
+  "[a-z]+.gfycat.com",
   "0x0.st",
 ];
 var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(h) {
