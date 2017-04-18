@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.1.3
+// @version     0.1.4
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -137,24 +137,49 @@ function embedVideo(link) {
   .then(getVideoScreenshot)
   .then(makeThumbnail)
   .then(function(thumbnail) {
-    var vid = document.createElement("video");
+    var div = document.createElement("div");
+    div.className = "post-img";
 
+    var vid = document.createElement("video");
     vid.style.display = "block";
     vid.style.maxWidth = "200px";
     vid.style.maxHeight = "350px";
-
+    vid.style.cursor = "pointer";
     vid.poster = thumbnail;
     vid.preload = "none";
     vid.loop = true;
     vid.controls = false;
+    vid.addEventListener("click", function() {
+      if (vid.controls) {
+        vid[vid.paused ? "play" : "pause"]();
+      } else {
+        close.style.display = "block";
+        vid.style.maxWidth = "none";
+        vid.controls = true;
+        vid.play();
+      }
+    });
     vid.src = link.href;
-    vid.addEventListener("click", function(event) {
-      if (!vid.controls) vid.play();
-      vid.controls = true;
-      vid.style.maxWidth = "none";
+
+    var close = document.createElement("div");
+    var span = document.createElement("span");
+    var i = document.createElement("i");
+    close.className = "post-img-buttons";
+    span.className = "post-img-button";
+    i.className = "fa fa-times";
+    close.style.display = "none";
+    close.addEventListener("click", function() {
+      close.style.display = "none";
+      vid.controls = false;
+      vid.style.maxWidth = "200px";
+      vid.load();
     });
 
-    link.parentNode.replaceChild(vid, link);
+    div.appendChild(vid);
+    span.appendChild(i);
+    close.appendChild(span);
+    div.appendChild(close);
+    link.parentNode.replaceChild(div, link);
   });
 }
 
