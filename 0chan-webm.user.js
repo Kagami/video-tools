@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.2.2
+// @version     0.2.3
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -34,33 +34,55 @@ var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(host) {
   return new RegExp("^https?://" + host + "/.+\\.(webm|mp4)$");
 });
 
+function downsample(src, dst) {
+  var c1 = document.createElement("canvas");
+  var c2 = document.createElement("canvas");
+  var tmp = null;
+  var cW = c1.width = src.width;
+  var cH = c1.height = src.height;
+  c1.getContext("2d").drawImage(src, 0, 0, cW, cH);
+
+  do {
+    cW /= 2;
+    cH /= 2;
+    if (cW < dst.width) cW = dst.width;
+    if (cH < dst.height) cH = dst.height;
+    c2.width = cW;
+    c2.height = cH;
+    c2.getContext("2d").drawImage(c1, 0, 0, cW, cH);
+    tmp = c1;
+    c1 = c2;
+    c2 = tmp;
+  } while (cW > dst.width || cH > dst.height);
+
+  dst.getContext("2d").drawImage(c1, 0, 0);
+}
+
 function makeThumbnail(screenshot) {
   return new Promise(function(resolve, reject) {
     var img = document.createElement("img");
     img.addEventListener("load", function () {
-      var c = document.createElement("canvas");
+      var c = document.createElement("canvas")
       var ctx = c.getContext("2d");
-      var arrow = "\u25B6";
-      var circle = "\u26AB";
-      var textWidth = 0;
-      var textHeight = THUMB_SIZE / 4;
       if (img.width > img.height) {
         c.width = THUMB_SIZE;
-        c.height = (img.height*THUMB_SIZE) / img.width;
+        c.height = THUMB_SIZE * img.height / img.width;
       } else {
-        c.width = (img.width*THUMB_SIZE) / img.height;
+        c.width = THUMB_SIZE * img.width / img.height;
         c.height = THUMB_SIZE;
       }
-      ctx.drawImage(img, 0, 0, c.width, c.height);
+      downsample(img, c);
+
+      var arrow = "\u25B6";
+      var textWidth = 0;
+      var textHeight = 40;
       ctx.font = textHeight + "px sans-serif";
-      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-      textWidth = ctx.measureText(circle).width;
-      ctx.fillText(circle, c.width/2 - textWidth*0.55, c.height/2 + textHeight*0.45);
-      textHeight /= 2;
-      ctx.font = textHeight + "px sans-serif";
-      ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.fillStyle = "#6cbf1d";
+      ctx.strokeStyle = "#366a04";
       textWidth = ctx.measureText(arrow).width;
-      ctx.fillText(arrow, c.width/2 - textWidth/2, c.height/2 + textHeight/2);
+      ctx.fillText(arrow, c.width/2 - textWidth/2, c.height/2 + 15);
+      ctx.lineWidth = 2;
+      ctx.strokeText(arrow, c.width/2 - textWidth/2, c.height/2 + 15);
       resolve(c.toDataURL("image/png", 1.0));
     });
     img.addEventListener("error", reject);
@@ -125,6 +147,7 @@ function createVideoElement(link, thumbnail) {
   vid.preload = "none";
   vid.loop = true;
   vid.controls = false;
+  vid.title = link.href;
   vid.addEventListener("click", function() {
     if (!vid.controls) {
       close.style.display = "block";
