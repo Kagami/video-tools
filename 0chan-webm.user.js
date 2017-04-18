@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.1.1
+// @version     0.1.2
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     my.mixtape.moe
@@ -24,8 +24,9 @@ var ALLOWED_HOSTS = [
   "[a-z]+.gfycat.com",
   "0x0.st",
 ];
-var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(h) {
-  return new RegExp("^https?://" + h.replace(/\./g, "\\.") + "/.+\\.webm$");
+var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(host) {
+  host = host.replace(/\./g, "\\.");
+  return new RegExp("^https?://" + host + "/.+\\.(webm|mp4)$");
 });
 
 function makeThumbnail(screenshot) {
