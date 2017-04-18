@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.1.8
+// @version     0.1.9
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -17,6 +17,8 @@
 // @connect     0x0.st
 // ==/UserScript==
 
+var LOAD_BYTES1 = 100 * 1024;
+var LOAD_BYTES2 = 500 * 1024;
 var THUMB_SIZE = 200;
 var ALLOWED_HOSTS = [
   "[a-z0-9]+.mixtape.moe", "u.nya.is",
@@ -63,14 +65,14 @@ function makeThumbnail(screenshot) {
   });
 }
 
-function loadVideoDataFromURL(url) {
+function loadVideoDataFromURL(url, limit) {
   return new Promise(function(resolve, reject) {
     GM_xmlhttpRequest({
+      url: url,
       method: "GET",
       responseType: "blob",
-      url: url,
       headers: {
-        Range: "bytes=0-250000"  // Should be enough to get first frame
+        Range: "bytes=0-" + limit,
       },
       onload: function(response) {
         resolve(response.response);
@@ -88,8 +90,7 @@ function loadVideo(videoData) {
     vid.muted = true;
     vid.autoplay = false;
     vid.addEventListener("error", function() {
-      // err.message is empty for these kind of errors.
-      reject(new Error("failed to load video"));
+      reject(new Error("failed to load"));
     });
     vid.addEventListener("loadedmetadata", function() {
       resolve(vid);
@@ -99,7 +100,8 @@ function loadVideo(videoData) {
 }
 
 function getVideoScreenshot(vid) {
-  var timePos = 0.0;
+  var HAVE_METADATA = 1;
+  var HAVE_CURRENT_DATA = 2;
   return new Promise(function(resolve, reject) {
     var makeScreenshot = function() {
       var c = document.createElement("canvas");
@@ -109,27 +111,20 @@ function getVideoScreenshot(vid) {
         c.height = vid.videoHeight;
         ctx.drawImage(vid, 0, 0, c.width, c.height);
       } catch (e) {
-        reject(e);
+        reject(new Error("failed to decode"));
         return;
       }
       resolve(c.toDataURL("image/png", 1.0));
     };
-    if (vid.currentTime === timePos) {
-      var HAVE_CURRENT_DATA = 2;
-      var HAVE_METADATA = 1;
-      if (vid.readyState >= HAVE_CURRENT_DATA) {
-        makeScreenshot();
-      } else if (vid.readyState === HAVE_METADATA) {
-        vid.addEventListener("error", reject);
-        vid.addEventListener("seeked", makeScreenshot);
-        vid.currentTime = timePos;
-      } else {
-        reject(new Error("no video data"));
-      }
-    } else {
+
+    if (vid.readyState >= HAVE_CURRENT_DATA) {
+      makeScreenshot();
+    } else if (vid.readyState === HAVE_METADATA) {
       vid.addEventListener("error", reject);
       vid.addEventListener("seeked", makeScreenshot);
-      vid.currentTime = timePos;
+      vid.currentTime = 0;
+    } else {
+      reject(new Error("no video data"));
     }
   });
 }
@@ -176,17 +171,27 @@ function createVideoElement(link, thumbnail) {
 }
 
 function embedVideo(link) {
-  loadVideoDataFromURL(link.href)
-    .then(loadVideo)
-    .then(getVideoScreenshot)
-    .then(makeThumbnail)
-    .then(function(thumbnail) {
+  var part1 = function(limit) {
+    return loadVideoDataFromURL(link.href, limit)
+      .then(loadVideo)
+      .then(getVideoScreenshot);
+  };
+  var part2 = function(screenshot) {
+    return makeThumbnail(screenshot).then(function(thumbnail) {
       var div = createVideoElement(link, thumbnail);
       link.parentNode.replaceChild(div, link);
-    }).catch(function(err) {
-      console.error("[0chan-webm] Failed to embed " + link.href +
-                    " : " + err.message);
     });
+  };
+  var partErr = function(err) {
+    console.error("[0chan-webm] Failed to embed " + link.href +
+                  " : " + err.message);
+  };
+
+  part1(LOAD_BYTES1).then(function(screenshot) {
+    part2(screenshot).catch(partErr);
+  }, function() {
+    part1(LOAD_BYTES2).then(part2).catch(partErr);
+  });
 }
 
 function handlePost(post) {
