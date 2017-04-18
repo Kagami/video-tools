@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.1.7
+// @version     0.1.8
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -140,7 +140,6 @@ function createVideoElement(link, thumbnail) {
 
   var vid = document.createElement("video");
   vid.style.display = "block";
-  vid.style.maxWidth = "200px";
   vid.style.maxHeight = "350px";
   vid.style.cursor = "pointer";
   vid.poster = thumbnail;
@@ -148,11 +147,8 @@ function createVideoElement(link, thumbnail) {
   vid.loop = true;
   vid.controls = false;
   vid.addEventListener("click", function() {
-    if (vid.controls) {
-      vid[vid.paused ? "play" : "pause"]();
-    } else {
+    if (!vid.controls) {
       close.style.display = "block";
-      vid.style.maxWidth = "none";
       vid.controls = true;
       vid.play();
     }
@@ -169,8 +165,7 @@ function createVideoElement(link, thumbnail) {
   close.addEventListener("click", function() {
     close.style.display = "none";
     vid.controls = false;
-    vid.style.maxWidth = "200px";
-    vid.load();
+    vid.src = link.href;
   });
 
   div.appendChild(vid);
