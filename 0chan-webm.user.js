@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.3.4
+// @version     0.3.5
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -291,23 +291,6 @@ function embedUpload(container) {
   buttons.appendChild(button);
 }
 
-function embedMainUpload() {
-  var container = document.querySelector(".reply-form")
-  var observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      Array.prototype.forEach.call(mutation.addedNodes, function(node) {
-        if (node.nodeType !== Node.ELEMENT_NODE) return;
-        if (node.classList.contains("reply-form")) {
-          container = node;
-          embedUpload(container);
-        }
-      });
-    });
-  });
-  observer.observe(container.parentNode, {childList: true});
-  embedUpload(container);
-}
-
 function handleThread(container) {
   var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
@@ -326,7 +309,7 @@ function handleThread(container) {
   });
   observer.observe(container, {childList: true, subtree: true});
   Array.prototype.forEach.call(container.querySelectorAll(".post"), handlePost);
-  embedMainUpload();
+  embedUpload(document.querySelector(".reply-form"));
 }
 
 // TODO: Handle multiple threads.
