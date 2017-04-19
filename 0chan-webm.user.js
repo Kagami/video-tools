@@ -232,8 +232,7 @@ function upload(files) {
       if (this.status >= 200 && this.status < 400) {
         var info = JSON.parse(this.responseText);
         if (info.success) {
-          var urls = info.files.map(function(f) { return f.url; }).join("\n");
-          resolve(urls);
+          resolve(info.files.map(function(f) { return f.url; }));
         } else {
           reject(new Error(info.description.code));
         }
@@ -270,7 +269,7 @@ function embedUpload(container) {
     icon.classList.remove("fa-file-video-o");
     icon.classList.add("fa-spinner", "fa-spin", "fa-fw");
     upload(input.files).then(function(urls) {
-      textarea.value += urls;
+      textarea.value += urls.join("\n");
     }, function(e) {
       // TODO: Use notifications.
       textarea.value += "upload fail: " + e.message;
