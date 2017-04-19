@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.2.7
+// @version     0.2.8
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -147,6 +147,7 @@ function createVideoElement(link, thumbnail) {
   vid.style.display = "block";
   vid.style.maxHeight = "350px";
   vid.style.cursor = "pointer";
+  vid.style.border = "1px dashed #818181";
   vid.poster = thumbnail;
   vid.preload = "none";
   vid.loop = true;
