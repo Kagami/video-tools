@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.2.8
+// @version     0.2.9
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -246,11 +246,7 @@ function upload(files) {
   });
 }
 
-// TODO: Embed into float forms.
-function embedUpload() {
-  var container = document.querySelector(".reply-form")
-  if (!container) return;
-
+function embedUpload(container) {
   var textarea = container.querySelector("textarea");
   var buttons = container.querySelector(".attachment-btns");
 
@@ -283,43 +279,50 @@ function embedUpload() {
 
   buttons.appendChild(input);
   buttons.appendChild(button);
+}
 
+function embedMainUpload() {
+  var container = document.querySelector(".reply-form")
   var observer = new MutationObserver(function(mutations) {
-    mutations.some(function(mutation) {
+    mutations.forEach(function(mutation) {
       var nodes = mutation.addedNodes;
       var replaced = Array.prototype.some.call(nodes, function(node) {
         return node.classList.contains("reply-form");
       });
       if (replaced) {
-        observer.disconnect();
-        setTimeout(embedUpload);
-        return true;
+        embedUpload(container);
       }
     });
   });
   observer.observe(container.parentNode, {childList: true});
+  embedUpload(container);
 }
 
-// TODO: Handle OP post.
 function handleThread(container) {
   var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
-      Array.prototype.filter.call(mutation.addedNodes, function(node) {
-        return node.tagName === "DIV";
-      }).forEach(handlePost);
+      Array.prototype.forEach.call(mutation.addedNodes, function(node) {
+        if (node.parentNode.classList.contains("thread-tree")) {
+          handlePost(node);
+        } else if (node.classList.contains("reply-form")) {
+          embedUpload(node);
+        } else if (node.classList.contains("thread-tree")) {
+          Array.prototype.forEach.call(node.querySelectorAll(".post"), handlePost);
+        }
+      });
     });
   });
-  // TODO: Wait for tree.
-  if (container) {
-    observer.observe(container, {childList: true});
-    Array.prototype.forEach.call(container.children, handlePost);
-  }
-  embedUpload();
+  observer.observe(container, {childList: true, subtree: true});
+  Array.prototype.forEach.call(container.querySelectorAll(".post"), handlePost);
+  embedMainUpload();
 }
 
 // TODO: Handle multiple threads.
 function handleThreads() {
-  handleThread(document.querySelector(".thread-tree"));
+  var thread = document.querySelector(".threads");
+  if (thread) {
+    handleThread(thread);
+  }
 }
 
 unsafeWindow._webmHandler = typeof exportFunction === "undefined"
@@ -327,8 +330,6 @@ unsafeWindow._webmHandler = typeof exportFunction === "undefined"
   : exportFunction(handleThreads, unsafeWindow);
 
 function handleApp(container) {
-  // XXX: $bus is not yet available on DOMContentLoaded so wait for the
-  // first mutation.
   var observer = new MutationObserver(function(mutations) {
     var app = unsafeWindow.app;
     if (!app.$bus) return;
