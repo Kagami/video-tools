@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.2.3
+// @version     0.2.4
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -99,8 +99,12 @@ function loadVideoDataFromURL(url, limit) {
       headers: {
         Range: "bytes=0-" + limit,
       },
-      onload: function(response) {
-        resolve(response.response);
+      onload: function(res) {
+        if (res.status >= 200 && res.status < 400) {
+          resolve(res.response);
+        } else {
+          reject(new Error("HTTP " + res.status));
+        }
       },
       onerror: function(e) {
         reject(e);
@@ -189,15 +193,19 @@ function embedVideo(link) {
       link.parentNode.replaceChild(div, link);
     });
   };
-  var partErr = function(err) {
+  var partErr = function(e) {
     console.error("[0chan-webm] Failed to embed " + link.href +
-                  " : " + err.message);
+                  " : " + e.message);
   };
 
   part1(LOAD_BYTES1).then(function(screenshot) {
     part2(screenshot).catch(partErr);
-  }, function() {
-    part1(LOAD_BYTES2).then(part2).catch(partErr);
+  }, function(e) {
+    if ((e.message || "").startsWith("HTTP ")) {
+      partErr(e);
+    } else {
+      part1(LOAD_BYTES2).then(part2).catch(partErr);
+    }
   });
 }
 
