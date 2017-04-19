@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.2.5
+// @version     0.2.6
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -22,6 +22,7 @@
 var LOAD_BYTES1 = 150 * 1024;
 var LOAD_BYTES2 = 500 * 1024;
 var THUMB_SIZE = 200;
+var UPLOAD_HOST = "safe.moe";
 var ALLOWED_HOSTS = [
   "[a-z0-9]+.mixtape.moe", "u.nya.is",
   "a.safe.moe", "a.pomf.cat",
@@ -107,9 +108,7 @@ function loadVideoDataFromURL(url, limit) {
           reject(new Error("HTTP " + res.status));
         }
       },
-      onerror: function(e) {
-        reject(e);
-      },
+      onerror: reject,
     });
   });
 }
@@ -219,6 +218,72 @@ function handlePost(post) {
   }).forEach(embedVideo);
 }
 
+function upload(files) {
+  return new Promise(function(resolve, reject) {
+    var url = "https://" + UPLOAD_HOST + "/api/upload";
+    var form = new FormData();
+    Array.prototype.forEach.call(files, function(file) {
+      form.append("files[]", file);
+    });
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    xhr.onload = function() {
+      if (this.status >= 200 && this.status < 400) {
+        var info = JSON.parse(this.responseText);
+        if (info.success) {
+          var urls = info.files.map(function(f) { return f.url; }).join("\n");
+          resolve(urls);
+        } else {
+          reject(new Error(info.description.code));
+        }
+      } else {
+        reject(new Error(this.status));
+      }
+    };
+    xhr.onerror = reject;
+    xhr.send(form);
+  });
+}
+
+// TODO: Embed into float forms.
+function embedUpload() {
+  var container = document.querySelector(".reply-form")
+  if (!container) return;
+
+  var textarea = container.querySelector("textarea");
+  var buttons = container.querySelector(".attachment-btns");
+
+  var button = document.createElement("button");
+  button.className = "btn btn-xs btn-default";
+  button.textContent = "WebM";
+  button.addEventListener("click", function() {
+    input.click();
+  });
+
+  var input = document.createElement("input");
+  input.style.display = "none";
+  input.setAttribute("name", "files");
+  input.setAttribute("type", "file");
+  input.setAttribute("accept", "video/*");
+  input.multiple = true;
+  input.addEventListener("change", function() {
+    button.disabled = true;
+    textarea.value = "uploading…";
+    upload(input.files).then(function(urls) {
+      textarea.value = urls;
+    }, function(e) {
+      textarea.value = "failed to upload: " + e.message;
+    }).then(function() {
+      button.disabled = false;
+      input.value = null;
+      textarea.dispatchEvent(new Event("input"));
+    });
+  });
+
+  buttons.appendChild(input);
+  buttons.appendChild(button);
+}
+
 // TODO: Handle OP post.
 function handleThread(container) {
   var observer = new MutationObserver(function(mutations) {
@@ -228,8 +293,12 @@ function handleThread(container) {
       }).forEach(handlePost);
     });
   });
-  observer.observe(container, {childList: true});
-  Array.prototype.forEach.call(container.children, handlePost);
+  // TODO: Wait for tree.
+  if (container) {
+    observer.observe(container, {childList: true});
+    Array.prototype.forEach.call(container.children, handlePost);
+  }
+  embedUpload();
 }
 
 // TODO: Handle multiple threads.
