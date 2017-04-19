@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.3.3
+// @version     0.3.4
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -296,7 +296,7 @@ function embedMainUpload() {
   var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
       Array.prototype.forEach.call(mutation.addedNodes, function(node) {
-        if (node.nodeType === Node.COMMENT_NODE) return;
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
         if (node.classList.contains("reply-form")) {
           container = node;
           embedUpload(container);
@@ -312,8 +312,9 @@ function handleThread(container) {
   var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
       Array.prototype.forEach.call(mutation.addedNodes, function(node) {
-        if (node.nodeType === Node.COMMENT_NODE) return;
-        if (node.parentNode.classList.contains("thread-tree")) {
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        if (node.parentNode.classList.contains("thread-tree") ||
+            node.classList.contains("post-popup")) {
           handlePost(node);
         } else if (node.classList.contains("reply-form")) {
           embedUpload(node);
