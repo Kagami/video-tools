@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.3.5
+// @version     0.3.6
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -22,6 +22,7 @@
 var LOAD_BYTES1 = 150 * 1024;
 var LOAD_BYTES2 = 500 * 1024;
 var THUMB_SIZE = 200;
+var THUMB_VERSION = 1;
 var UPLOAD_HOST = "safe.moe";
 var ALLOWED_HOSTS = [
   "[a-z0-9]+.mixtape.moe", "u.nya.is",
@@ -85,7 +86,7 @@ function makeThumbnail(screenshot) {
       ctx.fillText(arrow, c.width / 2 - textWidth / 2, c.height / 2 + 15);
       ctx.lineWidth = 2;
       ctx.strokeText(arrow, c.width / 2 - textWidth / 2, c.height / 2 + 15);
-      resolve(c.toDataURL("image/png", 1.0));
+      resolve(c.toDataURL("image/jpeg"));
     });
     img.addEventListener("error", reject);
     img.src = screenshot;
@@ -135,7 +136,7 @@ function getVideoScreenshot(vid) {
     c.width = vid.videoWidth;
     c.height = vid.videoHeight;
     ctx.drawImage(vid, 0, 0, c.width, c.height);
-    resolve(c.toDataURL("image/png", 1.0));
+    resolve(c.toDataURL());
   });
 }
 
@@ -169,29 +170,57 @@ function createVideoElement(link, thumbnail) {
   span.className = "post-img-button";
   i.className = "fa fa-times";
   close.style.display = "none";
-  close.addEventListener("click", function() {
+  span.addEventListener("click", function() {
     close.style.display = "none";
     vid.controls = false;
     vid.src = link.href;
   });
+  var span2 = document.createElement("span");
+  var i2 = document.createElement("i");
+  span2.className = "post-img-button";
+  i2.className = "fa fa-share";
+  span2.addEventListener("click", function() {
+    vid.pause();
+    window.open(link.href, "_blank");
+  });
 
   div.appendChild(vid);
+  span2.appendChild(i2);
+  close.appendChild(span2);
   span.appendChild(i);
   close.appendChild(span);
   div.appendChild(close);
   return div;
 }
 
+function makeThumbKey(url) {
+  return "thumb_v" + THUMB_VERSION + "_" + url;
+}
+
+function getThumbFromCache(url) {
+  return localStorage.getItem(makeThumbKey(url));
+}
+
+function saveThumbToCache(url, thumb) {
+  localStorage.setItem(makeThumbKey(url), thumb);
+}
+
 function embedVideo(link) {
+  var cachedThumb = getThumbFromCache(link.href);
   var part1 = function(limit) {
     return loadVideoDataFromURL(link.href, limit)
       .then(loadVideo)
-      .then(getVideoScreenshot);
+      .then(getVideoScreenshot)
+      .then(makeThumbnail);
   };
-  var part2 = function(screenshot) {
-    return makeThumbnail(screenshot).then(function(thumbnail) {
-      var div = createVideoElement(link, thumbnail);
+  var part2 = function(thumb) {
+    return new Promise(function(resolve, reject) {
+      var div = createVideoElement(link, thumb);
       link.parentNode.replaceChild(div, link);
+      if (!cachedThumb) {
+        saveThumbToCache(link.href, thumb);
+      }
+      resolve();
     });
   };
   var partErr = function(e) {
@@ -199,15 +228,19 @@ function embedVideo(link) {
                   " : " + e.message);
   };
 
-  part1(LOAD_BYTES1).then(function(screenshot) {
-    part2(screenshot).catch(partErr);
-  }, function(e) {
-    if ((e.message || "").startsWith("HTTP ")) {
-      partErr(e);
-    } else {
-      part1(LOAD_BYTES2).then(part2).catch(partErr);
-    }
-  });
+  if (cachedThumb) {
+    part2(cachedThumb).catch(partErr);
+  } else {
+    part1(LOAD_BYTES1).then(function(thumb) {
+      part2(thumb).catch(partErr);
+    }, function(e) {
+      if ((e.message || "").startsWith("HTTP ")) {
+        partErr(e);
+      } else {
+        part1(LOAD_BYTES2).then(part2).catch(partErr);
+      }
+    });
+  }
 }
 
 function handlePost(post) {
