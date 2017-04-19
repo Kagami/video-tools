@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.2.6
+// @version     0.2.7
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -282,6 +282,21 @@ function embedUpload() {
 
   buttons.appendChild(input);
   buttons.appendChild(button);
+
+  var observer = new MutationObserver(function(mutations) {
+    mutations.some(function(mutation) {
+      var nodes = mutation.addedNodes;
+      var replaced = Array.prototype.some.call(nodes, function(node) {
+        return node.classList.contains("reply-form");
+      });
+      if (replaced) {
+        observer.disconnect();
+        setTimeout(embedUpload);
+        return true;
+      }
+    });
+  });
+  observer.observe(container.parentNode, {childList: true});
 }
 
 // TODO: Handle OP post.
