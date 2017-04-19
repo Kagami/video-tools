@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.2.9
+// @version     0.3.0
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -252,10 +252,12 @@ function embedUpload(container) {
 
   var button = document.createElement("button");
   button.className = "btn btn-xs btn-default";
-  button.textContent = "WebM";
   button.addEventListener("click", function() {
     input.click();
   });
+
+  var icon = document.createElement("i");
+  icon.className = "fa fa-file-video-o";
 
   var input = document.createElement("input");
   input.style.display = "none";
@@ -265,18 +267,24 @@ function embedUpload(container) {
   input.multiple = true;
   input.addEventListener("change", function() {
     button.disabled = true;
-    textarea.value = "uploading…";
+    icon.classList.remove("fa-file-video-o");
+    icon.classList.add("fa-spinner", "fa-spin", "fa-fw");
     upload(input.files).then(function(urls) {
-      textarea.value = urls;
+      textarea.value += urls;
     }, function(e) {
-      textarea.value = "failed to upload: " + e.message;
+      // TODO: Use notifications.
+      textarea.value += "upload fail: " + e.message;
     }).then(function() {
       button.disabled = false;
+      icon.classList.remove("fa-spinner", "fa-spin", "fa-fw");
+      icon.classList.add("fa-file-video-o");
       input.value = null;
       textarea.dispatchEvent(new Event("input"));
     });
   });
 
+  button.appendChild(icon);
+  button.appendChild(document.createTextNode(" WebM"));
   buttons.appendChild(input);
   buttons.appendChild(button);
 }
