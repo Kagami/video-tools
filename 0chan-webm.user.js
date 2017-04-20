@@ -36,45 +36,44 @@ var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(host) {
   return new RegExp("^https?://" + host + "/.+\\.(webm|mp4)$");
 });
 
-function downsample(src, dst) {
+function downsample(src, dwidth, dheight) {
   var c1 = document.createElement("canvas");
   var c2 = document.createElement("canvas");
   var tmp = null;
   var cW = c1.width = src.width;
   var cH = c1.height = src.height;
-  c1.getContext("2d").drawImage(src, 0, 0, cW, cH);
+  c1.getContext("2d").drawImage(src, 0, 0);
 
   do {
     cW /= 2;
     cH /= 2;
-    if (cW < dst.width) cW = dst.width;
-    if (cH < dst.height) cH = dst.height;
+    if (cW < dwidth) cW = dwidth;
+    if (cH < dheight) cH = dheight;
     c2.width = cW;
     c2.height = cH;
     c2.getContext("2d").drawImage(c1, 0, 0, cW, cH);
     tmp = c1;
     c1 = c2;
     c2 = tmp;
-  } while (cW > dst.width || cH > dst.height);
+  } while (cW > dwidth || cH > dheight);
 
-  dst.getContext("2d").drawImage(c1, 0, 0);
+  return c1;
 }
 
 function makeThumbnail(screenshot) {
   return new Promise(function(resolve, reject) {
     var img = document.createElement("img");
     img.addEventListener("load", function () {
-      var c = document.createElement("canvas")
-      var ctx = c.getContext("2d");
+      var dwidth = 0;
+      var dheight = 0;
       if (img.width > img.height) {
-        c.width = THUMB_SIZE;
-        c.height = THUMB_SIZE * img.height / img.width;
+        dwidth = THUMB_SIZE;
+        dheight = THUMB_SIZE * img.height / img.width;
       } else {
-        c.width = THUMB_SIZE * img.width / img.height;
-        c.height = THUMB_SIZE;
+        dwidth = THUMB_SIZE * img.width / img.height;
+        dheight = THUMB_SIZE;
       }
-      downsample(img, c);
-      resolve(c.toDataURL("image/jpeg"));
+      resolve(downsample(img, dwidth, dheight).toDataURL("image/jpeg"));
     });
     img.addEventListener("error", reject);
     img.src = screenshot;
@@ -330,7 +329,6 @@ function handleThread(container) {
   });
   observer.observe(container, {childList: true, subtree: true});
   Array.prototype.forEach.call(container.querySelectorAll(".post"), handlePost);
-  embedUpload(document.querySelector(".reply-form"));
 }
 
 // TODO: Handle multiple threads.
@@ -338,6 +336,7 @@ function handleThreads() {
   var thread = document.querySelector(".threads");
   if (thread) {
     handleThread(thread);
+    embedUpload(document.querySelector(".reply-form"));
   }
 }
 
