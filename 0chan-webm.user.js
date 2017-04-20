@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.4.3
+// @version     0.4.4
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -130,6 +130,7 @@ function saveVolumeToCache(volume) {
 function createVideoElement(link, thumbnail) {
   var div = document.createElement("div");
   div.className = "post-img";
+  div.style.margin = 0;
 
   var vid = document.createElement("video");
   vid.style.display = "block";
