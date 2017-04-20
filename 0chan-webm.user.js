@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.4.9
+// @version     0.5.0
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -197,6 +197,19 @@ function createVideoElement(post, link, thumbnail) {
   var div = document.createElement("div");
   div.className = "post-img";
 
+  var expand = function() {
+    body.style.maxHeight = "none";
+    btns.style.display = "block";
+    vid.controls = true;
+    vid.play();
+  };
+  var minimize = function() {
+    body.style.maxHeight = bodyHeight;
+    btns.style.display = "none";
+    vid.controls = false;
+    vid.src = link.href;
+  };
+
   var vid = document.createElement("video");
   vid.style.display = "block";
   vid.style.maxWidth = "100%";
@@ -210,12 +223,17 @@ function createVideoElement(post, link, thumbnail) {
   vid.volume = getVolumeFromCache();
   var title = getTitleFromCache(link.href);
   vid.title = title ? (title + " | " + link.href) : link.href;
-  vid.addEventListener("click", function() {
-    if (!vid.controls) {
-      body.style.maxHeight = "none";
-      btns.style.display = "block";
-      vid.controls = true;
-      vid.play();
+  vid.addEventListener("click", function(e) {
+    if (vid.controls) {
+      // <https://stackoverflow.com/a/22928167>.
+      var ctrlHeight = 50;
+      var rect = vid.getBoundingClientRect();
+      var relY = e.clientY - rect.top;
+      if (relY < rect.height - ctrlHeight) {
+        minimize();
+      }
+    } else {
+      expand();
     }
   });
   vid.addEventListener("volumechange", function() {
@@ -227,47 +245,33 @@ function createVideoElement(post, link, thumbnail) {
   btns.className = "post-img-buttons";
   btns.style.display = "none";
 
-  var btn = document.createElement("span");
-  var i = document.createElement("i");
-  btn.className = "post-img-button";
-  i.className = "fa fa-times";
-  btn.title = "Minimize video";
-  btn.addEventListener("click", function() {
-    body.style.maxHeight = bodyHeight;
-    btns.style.display = "none";
-    vid.controls = false;
-    vid.src = link.href;
-  });
-
-  var btn2 = document.createElement("a");
-  var i2 = document.createElement("i");
-  btn2.className = "post-img-button";
-  i2.className = "fa fa-external-link-square";
-  btn2.style.minWidth = 0;
-  btn2.style.minHeight = 0;
-  btn2.style.color = "#333";
-  btn2.href = link.href;
-  btn2.setAttribute("target", "_blank");
-  btn2.title = "Open video in new tab";
-  btn2.addEventListener("click", function() {
+  var btnOpen = document.createElement("a");
+  var iconOpen = document.createElement("i");
+  btnOpen.className = "post-img-button";
+  iconOpen.className = "fa fa-external-link-square";
+  btnOpen.style.minWidth = 0;
+  btnOpen.style.minHeight = 0;
+  btnOpen.style.color = "#333";
+  btnOpen.href = link.href;
+  btnOpen.setAttribute("target", "_blank");
+  btnOpen.title = "Open video in new tab";
+  btnOpen.addEventListener("click", function() {
     vid.pause();
   });
 
-  var btn3 = document.createElement("span");
-  var i3 = document.createElement("i");
-  btn3.className = "post-img-button";
-  i3.className = "fa fa-clipboard";
-  btn3.title = "Copy video title to clipboard";
-  btn3.addEventListener("click", function() {
+  var btnCopy = document.createElement("span");
+  var iconCopy = document.createElement("i");
+  btnCopy.className = "post-img-button";
+  iconCopy.className = "fa fa-clipboard";
+  btnCopy.title = "Copy video title to clipboard";
+  btnCopy.addEventListener("click", function() {
     GM_setClipboard(vid.title);
   });
 
-  btn3.appendChild(i3);
-  btns.appendChild(btn3);
-  btn2.appendChild(i2);
-  btns.appendChild(btn2);
-  btn.appendChild(i);
-  btns.appendChild(btn);
+  btnCopy.appendChild(iconCopy);
+  btns.appendChild(btnCopy);
+  btnOpen.appendChild(iconOpen);
+  btns.appendChild(btnOpen);
   div.appendChild(vid);
   div.appendChild(btns);
   return div;
