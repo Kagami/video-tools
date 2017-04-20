@@ -254,7 +254,7 @@ function createVideoElement(post, link, thumbnail) {
   btnOpen.style.color = "#333";
   btnOpen.href = link.href;
   btnOpen.setAttribute("target", "_blank");
-  btnOpen.title = "Open video in new tab";
+  btnOpen.title = "Open in new tab";
   btnOpen.addEventListener("click", function() {
     vid.pause();
   });
@@ -263,7 +263,7 @@ function createVideoElement(post, link, thumbnail) {
   var iconCopy = document.createElement("i");
   btnCopy.className = "post-img-button";
   iconCopy.className = "fa fa-clipboard";
-  btnCopy.title = "Copy video title to clipboard";
+  btnCopy.title = "Copy title to clipboard";
   btnCopy.addEventListener("click", function() {
     GM_setClipboard(vid.title);
   });
