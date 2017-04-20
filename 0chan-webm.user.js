@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.3.7
+// @version     0.3.8
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -151,31 +151,35 @@ function createVideoElement(link, thumbnail) {
   vid.src = link.href;
 
   var close = document.createElement("div");
-  var span = document.createElement("span");
+  var btn = document.createElement("span");
   var i = document.createElement("i");
   close.className = "post-img-buttons";
-  span.className = "post-img-button";
+  btn.className = "post-img-button";
   i.className = "fa fa-times";
   close.style.display = "none";
-  span.addEventListener("click", function() {
+  btn.addEventListener("click", function() {
     close.style.display = "none";
     vid.controls = false;
     vid.src = link.href;
   });
-  var span2 = document.createElement("span");
+  var btn2 = document.createElement("a");
   var i2 = document.createElement("i");
-  span2.className = "post-img-button";
-  i2.className = "fa fa-share";
-  span2.addEventListener("click", function() {
+  btn2.className = "post-img-button";
+  i2.className = "fa fa-external-link-square";
+  btn2.style.minWidth = 0;
+  btn2.style.minHeight = 0;
+  btn2.style.color = "#333";
+  btn2.href = link.href;
+  btn2.setAttribute("target", "_blank");
+  btn2.addEventListener("click", function() {
     vid.pause();
-    window.open(link.href, "_blank");
   });
 
   div.appendChild(vid);
-  span2.appendChild(i2);
-  close.appendChild(span2);
-  span.appendChild(i);
-  close.appendChild(span);
+  btn2.appendChild(i2);
+  close.appendChild(btn2);
+  btn.appendChild(i);
+  close.appendChild(btn);
   div.appendChild(close);
   return div;
 }
@@ -311,6 +315,10 @@ function embedUpload(container) {
   buttons.appendChild(button);
 }
 
+function handlePosts(container) {
+  Array.prototype.forEach.call(container.querySelectorAll(".post"), handlePost);
+}
+
 function handleThread(container) {
   var observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
@@ -328,14 +336,34 @@ function handleThread(container) {
     });
   });
   observer.observe(container, {childList: true, subtree: true});
-  Array.prototype.forEach.call(container.querySelectorAll(".post"), handlePost);
+  handlePosts(container);
+  embedUpload(document.querySelector(".reply-form"));
 }
 
-// TODO: Handle multiple threads.
 function handleThreads() {
+  // Class naming is a bit stupid. Thanks Misha.
   var thread = document.querySelector(".threads");
+  var threads = document.querySelector(".thread");
   if (thread) {
     handleThread(thread);
+  } else if (threads) {
+    var container = threads.parentNode.parentNode;
+    var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        Array.prototype.forEach.call(mutation.addedNodes, function(node) {
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+          if (node.parentNode === container) {
+            handlePosts(node);
+          } else if (node.classList.contains("post-popup")) {
+            handlePost(node);
+          } else if (node.classList.contains("reply-form")) {
+            embedUpload(node);
+          }
+        });
+      });
+    });
+    observer.observe(container, {childList: true, subtree: true});
+    handlePosts(container);
     embedUpload(document.querySelector(".reply-form"));
   }
 }
