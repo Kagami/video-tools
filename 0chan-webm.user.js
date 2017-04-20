@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.4.5
+// @version     0.4.6
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -200,7 +200,8 @@ function createVideoElement(link, thumbnail) {
   vid.loop = true;
   vid.controls = false;
   vid.volume = getVolumeFromCache();
-  vid.title = getTitleFromCache(link.href) || link.href;
+  var title = getTitleFromCache(link.href);
+  vid.title = title ? (title + " | " + link.href) : link.href;
   vid.addEventListener("click", function() {
     if (!vid.controls) {
       btns.style.display = "block";
