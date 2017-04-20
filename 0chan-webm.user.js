@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.3.6
+// @version     0.3.7
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -22,7 +22,7 @@
 var LOAD_BYTES1 = 150 * 1024;
 var LOAD_BYTES2 = 500 * 1024;
 var THUMB_SIZE = 200;
-var THUMB_VERSION = 1;
+var THUMB_VERSION = 2;
 var UPLOAD_HOST = "safe.moe";
 var ALLOWED_HOSTS = [
   "[a-z0-9]+.mixtape.moe", "u.nya.is",
@@ -64,12 +64,8 @@ function makeThumbnail(screenshot) {
   return new Promise(function(resolve, reject) {
     var img = document.createElement("img");
     img.addEventListener("load", function () {
-      var arrow = "\u25B6";
-      var textWidth = 0;
-      var textHeight = 40;
       var c = document.createElement("canvas")
       var ctx = c.getContext("2d");
-
       if (img.width > img.height) {
         c.width = THUMB_SIZE;
         c.height = THUMB_SIZE * img.height / img.width;
@@ -78,14 +74,6 @@ function makeThumbnail(screenshot) {
         c.height = THUMB_SIZE;
       }
       downsample(img, c);
-
-      ctx.font = textHeight + "px sans-serif";
-      ctx.fillStyle = "#6cbf1d";
-      ctx.strokeStyle = "#366a04";
-      textWidth = ctx.measureText(arrow).width;
-      ctx.fillText(arrow, c.width / 2 - textWidth / 2, c.height / 2 + 15);
-      ctx.lineWidth = 2;
-      ctx.strokeText(arrow, c.width / 2 - textWidth / 2, c.height / 2 + 15);
       resolve(c.toDataURL("image/jpeg"));
     });
     img.addEventListener("error", reject);
