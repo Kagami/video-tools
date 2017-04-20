@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.3.8
+// @version     0.4.0
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -127,6 +127,14 @@ function getVideoScreenshot(vid) {
   });
 }
 
+function getVolumeFromCache() {
+  return localStorage.getItem("webm_volume") || 0.0;
+}
+
+function saveVolumeToCache(volume) {
+  localStorage.setItem("webm_volume", volume);
+}
+
 function createVideoElement(link, thumbnail) {
   var div = document.createElement("div");
   div.className = "post-img";
@@ -140,6 +148,7 @@ function createVideoElement(link, thumbnail) {
   vid.preload = "none";
   vid.loop = true;
   vid.controls = false;
+  vid.volume = getVolumeFromCache();
   vid.title = link.href;
   vid.addEventListener("click", function() {
     if (!vid.controls) {
@@ -147,6 +156,9 @@ function createVideoElement(link, thumbnail) {
       vid.controls = true;
       vid.play();
     }
+  });
+  vid.addEventListener("volumechange", function() {
+    saveVolumeToCache(vid.volume);
   });
   vid.src = link.href;
 
