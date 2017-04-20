@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.4.6
+// @version     0.4.7
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -350,7 +350,7 @@ function upload(files) {
 function embedUpload(container) {
   var textarea = container.querySelector("textarea");
   var addText = function(text) {
-    textarea.value += (textarea.value ? "\n" : "") + text;
+    textarea.value = textarea.value ? (text + "\n" + textarea.value) : text;
   };
 
   var buttons = container.querySelector(".attachment-btns");
