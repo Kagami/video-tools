@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.4.8
+// @version     0.4.9
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -157,7 +157,7 @@ function loadVideo(videoData) {
     vid.muted = true;
     vid.autoplay = false;
     vid.addEventListener("error", function() {
-      reject(new Error("failed to load"));
+      reject(new Error("cannot load"));
     });
     vid.addEventListener("loadeddata", function() {
       resolve(vid);
@@ -170,9 +170,14 @@ function makeScreenshot(vid) {
   return new Promise(function(resolve, reject) {
     var c = document.createElement("canvas");
     var ctx = c.getContext("2d");
-    c.width = vid.videoWidth;
-    c.height = vid.videoHeight;
-    ctx.drawImage(vid, 0, 0);
+    try {
+      c.width = vid.videoWidth;
+      c.height = vid.videoHeight;
+      ctx.drawImage(vid, 0, 0);
+    } catch(e) {
+      reject(new Error("cannot decode"));
+      return;
+    }
     resolve(c);
   });
 }
@@ -185,15 +190,17 @@ function saveVolumeToCache(volume) {
   localStorage.setItem("webm_volume", volume);
 }
 
-function createVideoElement(link, thumbnail) {
+function createVideoElement(post, link, thumbnail) {
+  var body = post.querySelector(".post-body-message");
+  var bodyHeight = body.style.maxHeight;
+
   var div = document.createElement("div");
   div.className = "post-img";
-  div.style.margin = 0;
 
   var vid = document.createElement("video");
   vid.style.display = "block";
   vid.style.maxWidth = "100%";
-  vid.style.maxHeight = "350px";
+  vid.style.maxHeight = "1080px";
   vid.style.cursor = "pointer";
   vid.style.border = "1px dashed #818181";
   vid.poster = thumbnail;
@@ -205,6 +212,7 @@ function createVideoElement(link, thumbnail) {
   vid.title = title ? (title + " | " + link.href) : link.href;
   vid.addEventListener("click", function() {
     if (!vid.controls) {
+      body.style.maxHeight = "none";
       btns.style.display = "block";
       vid.controls = true;
       vid.play();
@@ -225,6 +233,7 @@ function createVideoElement(link, thumbnail) {
   i.className = "fa fa-times";
   btn.title = "Minimize video";
   btn.addEventListener("click", function() {
+    body.style.maxHeight = bodyHeight;
     btns.style.display = "none";
     vid.controls = false;
     vid.src = link.href;
@@ -274,7 +283,7 @@ function saveThumbToCache(url, thumb) {
   localStorage.setItem(key, thumb);
 }
 
-function embedVideo(link) {
+function embedVideo(post, link) {
   var cachedThumb = getThumbFromCache(link.href);
   var part1 = function(limit) {
     return loadVideoDataFromURL(link.href, limit)
@@ -285,7 +294,7 @@ function embedVideo(link) {
   };
   var part2 = function(thumb) {
     return new Promise(function(resolve, reject) {
-      var div = createVideoElement(link, thumb);
+      var div = createVideoElement(post, link, thumb);
       link.parentNode.replaceChild(div, link);
       if (!cachedThumb) {
         saveThumbToCache(link.href, thumb);
@@ -319,7 +328,7 @@ function handlePost(post) {
     return ALLOWED_LINKS.some(function(re) {
       return re.test(link.href);
     });
-  }).forEach(embedVideo);
+  }).forEach(embedVideo.bind(null, post));
 }
 
 function upload(files) {
