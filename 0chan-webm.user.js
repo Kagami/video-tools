@@ -6,9 +6,10 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.4.4
+// @version     0.4.5
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
+// @grant       GM_setClipboard
 // @connect     mixtape.moe
 // @connect     u.nya.is
 // @connect     a.safe.moe
@@ -35,6 +36,42 @@ var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(host) {
   host = host.replace(/\./g, "\\.");
   return new RegExp("^https?://" + host + "/.+\\.(webm|mp4)$");
 });
+
+// Ported from 4chan-x (MIT).
+function parseTitle(data) {
+  var i = 0;
+  var element = 0;
+  var size = 0;
+  var title = "";
+
+  var readInt = function() {
+    var n = data[i++];
+    var len = 0;
+    while (n < (0x80 >> len)) {
+      len++;
+    }
+    n ^= (0x80 >> len);
+    while (len-- && i < data.length) {
+      n = (n << 8) ^ data[i++];
+    }
+    return n;
+  };
+
+  while (i < data.length) {
+    element = readInt();
+    size = readInt();
+    if (element === 0x3BA9) {  // Title
+      while (size-- && i < data.length) {
+        title += String.fromCharCode(data[i++]);
+      }
+      return decodeURIComponent(escape(title));  // UTF-8 decoding
+    } else if (element !== 0x8538067 && element !== 0x549A966) {  // Segment, Info
+      i += size;
+    }
+  }
+
+  return "";
+}
 
 // See <https://stackoverflow.com/a/17862644>.
 function hqDownsampleInPlace(src, dst) {
@@ -77,13 +114,13 @@ function loadVideoDataFromURL(url, limit) {
     GM_xmlhttpRequest({
       url: url,
       method: "GET",
-      responseType: "blob",
+      responseType: "arraybuffer",
       headers: {
         Range: "bytes=0-" + limit,
       },
       onload: function(res) {
         if (res.status >= 200 && res.status < 400) {
-          resolve(res.response);
+          resolve(new Uint8Array(res.response));
         } else {
           reject(new Error("HTTP " + res.status));
         }
@@ -93,8 +130,28 @@ function loadVideoDataFromURL(url, limit) {
   });
 }
 
+function getTitleFromCache(url) {
+  return localStorage.getItem("title_" + url);
+}
+
+function saveTitleToCache(url, title) {
+  localStorage.setItem("title_" + url, title);
+}
+
+function loadVideoTitle(url, videoData) {
+  return new Promise(function(resolve, reject) {
+    var title = parseTitle(videoData);
+    if (title) {
+      saveTitleToCache(url, title);
+    }
+    resolve(videoData);
+  });
+}
+
 function loadVideo(videoData) {
   return new Promise(function(resolve, reject) {
+    var blob = new Blob([videoData]);
+    var url = URL.createObjectURL(blob);
     var vid = document.createElement("video");
     vid.muted = true;
     vid.autoplay = false;
@@ -104,7 +161,7 @@ function loadVideo(videoData) {
     vid.addEventListener("loadeddata", function() {
       resolve(vid);
     });
-    vid.src = URL.createObjectURL(videoData);
+    vid.src = url;
   });
 }
 
@@ -143,10 +200,10 @@ function createVideoElement(link, thumbnail) {
   vid.loop = true;
   vid.controls = false;
   vid.volume = getVolumeFromCache();
-  vid.title = link.href;
+  vid.title = getTitleFromCache(link.href) || link.href;
   vid.addEventListener("click", function() {
     if (!vid.controls) {
-      close.style.display = "block";
+      btns.style.display = "block";
       vid.controls = true;
       vid.play();
     }
@@ -156,18 +213,21 @@ function createVideoElement(link, thumbnail) {
   });
   vid.src = link.href;
 
-  var close = document.createElement("div");
+  var btns = document.createElement("div");
+  btns.className = "post-img-buttons";
+  btns.style.display = "none";
+
   var btn = document.createElement("span");
   var i = document.createElement("i");
-  close.className = "post-img-buttons";
   btn.className = "post-img-button";
   i.className = "fa fa-times";
-  close.style.display = "none";
+  btn.title = "Minimize video";
   btn.addEventListener("click", function() {
-    close.style.display = "none";
+    btns.style.display = "none";
     vid.controls = false;
     vid.src = link.href;
   });
+
   var btn2 = document.createElement("a");
   var i2 = document.createElement("i");
   btn2.className = "post-img-button";
@@ -177,35 +237,46 @@ function createVideoElement(link, thumbnail) {
   btn2.style.color = "#333";
   btn2.href = link.href;
   btn2.setAttribute("target", "_blank");
+  btn2.title = "Open video in new tab";
   btn2.addEventListener("click", function() {
     vid.pause();
   });
 
-  div.appendChild(vid);
+  var btn3 = document.createElement("span");
+  var i3 = document.createElement("i");
+  btn3.className = "post-img-button";
+  i3.className = "fa fa-clipboard";
+  btn3.title = "Copy video title to clipboard";
+  btn3.addEventListener("click", function() {
+    GM_setClipboard(vid.title);
+  });
+
+  btn3.appendChild(i3);
+  btns.appendChild(btn3);
   btn2.appendChild(i2);
-  close.appendChild(btn2);
+  btns.appendChild(btn2);
   btn.appendChild(i);
-  close.appendChild(btn);
-  div.appendChild(close);
+  btns.appendChild(btn);
+  div.appendChild(vid);
+  div.appendChild(btns);
   return div;
 }
 
-function makeThumbKey(url) {
-  return "thumb_v" + THUMB_VERSION + "_" + url;
-}
-
 function getThumbFromCache(url) {
-  return localStorage.getItem(makeThumbKey(url));
+  var key = "thumb_v" + THUMB_VERSION + "_" + url;
+  return localStorage.getItem(key);
 }
 
 function saveThumbToCache(url, thumb) {
-  localStorage.setItem(makeThumbKey(url), thumb);
+  var key = "thumb_v" + THUMB_VERSION + "_" + url;
+  localStorage.setItem(key, thumb);
 }
 
 function embedVideo(link) {
   var cachedThumb = getThumbFromCache(link.href);
   var part1 = function(limit) {
     return loadVideoDataFromURL(link.href, limit)
+      .then(loadVideoTitle.bind(null, link.href))
       .then(loadVideo)
       .then(makeScreenshot)
       .then(makeThumbnail);
