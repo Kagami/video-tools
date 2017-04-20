@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.5.0
+// @version     0.5.1
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -213,7 +213,7 @@ function createVideoElement(post, link, thumbnail) {
   var vid = document.createElement("video");
   vid.style.display = "block";
   vid.style.maxWidth = "100%";
-  vid.style.maxHeight = "1080px";
+  vid.style.maxHeight = "950px";
   vid.style.cursor = "pointer";
   vid.style.border = "1px dashed #818181";
   vid.poster = thumbnail;
