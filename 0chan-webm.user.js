@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.5.1
+// @version     0.5.2
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -193,17 +193,21 @@ function saveVolumeToCache(volume) {
 function createVideoElement(post, link, thumbnail) {
   var body = post.querySelector(".post-body-message");
   var bodyHeight = body.style.maxHeight;
+  var attachments = post.querySelector(".post-inline-attachment");
+  var attachHeight = attachments && attachments.style.maxHeight;
 
   var div = document.createElement("div");
   div.className = "post-img";
 
   var expand = function() {
+    if (attachments) attachments.style.maxHeight = "none";
     body.style.maxHeight = "none";
     btns.style.display = "block";
     vid.controls = true;
     vid.play();
   };
   var minimize = function() {
+    if (attachments) attachments.style.maxHeight = attachHeight;
     body.style.maxHeight = bodyHeight;
     btns.style.display = "none";
     vid.controls = false;
