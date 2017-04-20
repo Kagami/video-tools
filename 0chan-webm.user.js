@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.4.1
+// @version     0.4.2
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @connect     mixtape.moe
@@ -20,7 +20,7 @@
 // ==/UserScript==
 
 var LOAD_BYTES1 = 150 * 1024;
-var LOAD_BYTES2 = 500 * 1024;
+var LOAD_BYTES2 = 600 * 1024;
 var THUMB_SIZE = 200;
 var THUMB_VERSION = 2;
 var UPLOAD_HOST = "safe.moe";
@@ -36,47 +36,39 @@ var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(host) {
   return new RegExp("^https?://" + host + "/.+\\.(webm|mp4)$");
 });
 
-function downsample(src, dwidth, dheight) {
-  var c1 = document.createElement("canvas");
-  var c2 = document.createElement("canvas");
+// See <https://stackoverflow.com/a/17862644>.
+function hqDownsampleInPlace(src, dst) {
   var tmp = null;
-  var cW = c1.width = src.width;
-  var cH = c1.height = src.height;
-  c1.getContext("2d").drawImage(src, 0, 0);
-
+  var cW = src.width;
+  var cH = src.height;
+  var dW = dst.width;
+  var dH = dst.height;
   do {
     cW /= 2;
     cH /= 2;
-    if (cW < dwidth) cW = dwidth;
-    if (cH < dheight) cH = dheight;
-    c2.width = cW;
-    c2.height = cH;
-    c2.getContext("2d").drawImage(c1, 0, 0, cW, cH);
-    tmp = c1;
-    c1 = c2;
-    c2 = tmp;
-  } while (cW > dwidth || cH > dheight);
-
-  return c1;
+    if (cW < dW) cW = dW;
+    if (cH < dH) cH = dH;
+    dst.width = cW;
+    dst.height = cH;
+    dst.getContext("2d").drawImage(src, 0, 0, cW, cH);
+    tmp = src;
+    src = dst;
+    dst = tmp;
+  } while (cW > dW || cH > dH);
+  return src;
 }
 
-function makeThumbnail(screenshot) {
+function makeThumbnail(src) {
   return new Promise(function(resolve, reject) {
-    var img = document.createElement("img");
-    img.addEventListener("load", function () {
-      var dwidth = 0;
-      var dheight = 0;
-      if (img.width > img.height) {
-        dwidth = THUMB_SIZE;
-        dheight = THUMB_SIZE * img.height / img.width;
-      } else {
-        dwidth = THUMB_SIZE * img.width / img.height;
-        dheight = THUMB_SIZE;
-      }
-      resolve(downsample(img, dwidth, dheight).toDataURL("image/jpeg"));
-    });
-    img.addEventListener("error", reject);
-    img.src = screenshot;
+    var dst = document.createElement("canvas");
+    if (src.width > src.height) {
+      dst.width = THUMB_SIZE;
+      dst.height = THUMB_SIZE * src.height / src.width;
+    } else {
+      dst.width = THUMB_SIZE * src.width / src.height;
+      dst.height = THUMB_SIZE;
+    }
+    resolve(hqDownsampleInPlace(src, dst).toDataURL("image/jpeg"));
   });
 }
 
@@ -116,14 +108,14 @@ function loadVideo(videoData) {
   });
 }
 
-function getVideoScreenshot(vid) {
+function makeScreenshot(vid) {
   return new Promise(function(resolve, reject) {
     var c = document.createElement("canvas");
     var ctx = c.getContext("2d");
     c.width = vid.videoWidth;
     c.height = vid.videoHeight;
-    ctx.drawImage(vid, 0, 0, c.width, c.height);
-    resolve(c.toDataURL());
+    ctx.drawImage(vid, 0, 0);
+    resolve(c);
   });
 }
 
@@ -214,7 +206,7 @@ function embedVideo(link) {
   var part1 = function(limit) {
     return loadVideoDataFromURL(link.href, limit)
       .then(loadVideo)
-      .then(getVideoScreenshot)
+      .then(makeScreenshot)
       .then(makeThumbnail);
   };
   var part2 = function(thumb) {
