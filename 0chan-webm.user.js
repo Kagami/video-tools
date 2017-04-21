@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.5.8
+// @version     0.5.9
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -260,7 +260,7 @@ function createVideoElement(post, link, thumbnail) {
   vid.loop = true;
   vid.controls = false;
   vid.volume = getVolumeFromCache();
-  vid.title = meta.title || link.href;
+  vid.title = meta.title;
   vid.addEventListener("click", function(e) {
     if (vid.controls) {
       // <https://stackoverflow.com/a/22928167>.
@@ -315,7 +315,7 @@ function createVideoElement(post, link, thumbnail) {
   btns.appendChild(btnCopy);
   a.appendChild(vid);
   img.appendChild(labels);
-  img.appendChild(btns);
+  if (vid.title) img.appendChild(btns);
   img.appendChild(caption);
   img.appendChild(a);
   return img;
