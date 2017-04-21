@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name        0chan webm
 // @namespace   https://0chan.hk/webm
-// @description Replace external WebM links with video tag.
+// @description Add WebM support to 0chan.
 // @downloadURL https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
 // @version     0.5.9
-// @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
+// @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
 // @connect     mixtape.moe
 // @connect     u.nya.is
