@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.5.7
+// @version     0.5.8
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -110,6 +110,29 @@ function makeThumbnail(src) {
   });
 }
 
+function getMetadataFromCache(url) {
+  var meta = localStorage.getItem("meta_" + url);
+  try {
+    if (!meta) throw new Error();
+    return JSON.parse(meta);
+  } catch(e) {
+    return {size: 0, width: 0, height: 0, title: ""};
+  }
+}
+
+function saveMetadataToCache(url, meta) {
+  meta = Object.assign({}, getMetadataFromCache(url), meta);
+  localStorage.setItem("meta_" + url, JSON.stringify(meta));
+}
+
+function getVideoSize(headers) {
+  var range = headers
+    .split("\r\n")
+    .find(function(h) { return /^content-range:/i.test(h); });
+  if (!range) return 0;
+  return +range.split("/", 2)[1] || 0;
+}
+
 function loadVideoDataFromURL(url, limit) {
   return new Promise(function(resolve, reject) {
     GM_xmlhttpRequest({
@@ -121,6 +144,8 @@ function loadVideoDataFromURL(url, limit) {
       },
       onload: function(res) {
         if (res.status >= 200 && res.status < 400) {
+          var size = getVideoSize(res.responseHeaders);
+          saveMetadataToCache(url, {size: size});
           resolve(new Uint8Array(res.response));
         } else {
           reject(new Error("HTTP " + res.status));
@@ -131,20 +156,10 @@ function loadVideoDataFromURL(url, limit) {
   });
 }
 
-function getTitleFromCache(url) {
-  return localStorage.getItem("title_" + url);
-}
-
-function saveTitleToCache(url, title) {
-  localStorage.setItem("title_" + url, title);
-}
-
 function loadVideoTitle(url, videoData) {
   return new Promise(function(resolve, reject) {
     var title = parseTitle(videoData);
-    if (title) {
-      saveTitleToCache(url, title);
-    }
+    saveMetadataToCache(url, {title: title});
     resolve(videoData);
   });
 }
@@ -166,18 +181,19 @@ function loadVideo(videoData) {
   });
 }
 
-function makeScreenshot(vid) {
+function makeScreenshot(url, vid) {
   return new Promise(function(resolve, reject) {
     var c = document.createElement("canvas");
     var ctx = c.getContext("2d");
-    c.width = vid.videoWidth;
-    c.height = vid.videoHeight;
+    var width = c.width = vid.videoWidth;
+    var height = c.height = vid.videoHeight;
     try {
       ctx.drawImage(vid, 0, 0);
     } catch(e) {
       reject(new Error("cannot decode"));
       return;
     }
+    saveMetadataToCache(url, {width: width, height: height});
     resolve(c);
   });
 }
@@ -191,6 +207,7 @@ function saveVolumeToCache(volume) {
 }
 
 function createVideoElement(post, link, thumbnail) {
+  var meta = getMetadataFromCache(link.href);
   var body = post.querySelector(".post-body-message");
   var bodyHeight = body.style.maxHeight;
   var attachments = post.querySelector(".post-inline-attachment");
@@ -210,6 +227,7 @@ function createVideoElement(post, link, thumbnail) {
     a.removeAttribute("href");
     body.style.maxHeight = "none";
     labels.style.display = "none";
+    caption.style.display = "none";
     vid.controls = true;
     vid.play();
   };
@@ -225,9 +243,11 @@ function createVideoElement(post, link, thumbnail) {
   };
 
   var a = document.createElement("a");
+  a.style.display = "block";
   a.href = link.href;
   a.addEventListener("mouseover", function() {
     btns.style.display = "block";
+    if (!vid.controls) caption.style.display = "block";
   });
 
   var vid = document.createElement("video");
@@ -240,7 +260,7 @@ function createVideoElement(post, link, thumbnail) {
   vid.loop = true;
   vid.controls = false;
   vid.volume = getVolumeFromCache();
-  vid.title = getTitleFromCache(link.href) || link.href;
+  vid.title = meta.title || link.href;
   vid.addEventListener("click", function(e) {
     if (vid.controls) {
       // <https://stackoverflow.com/a/22928167>.
@@ -273,12 +293,30 @@ function createVideoElement(post, link, thumbnail) {
     GM_setClipboard(vid.title);
   });
 
+  var caption = document.createElement("figcaption");
+  if ((meta.width && meta.height) || meta.size) {
+    caption.textContent += meta.width;
+    caption.textContent += "×";
+    caption.textContent += meta.height;
+    caption.textContent += ", ";
+    if (meta.size >= 1024 * 1024) {
+      caption.textContent += (meta.size / 1024 / 1024).toFixed(2);
+      caption.textContent += "Мб";
+    } else {
+      caption.textContent += (meta.size / 1024).toFixed(2);
+      caption.textContent += "Кб";
+    }
+  } else {
+    caption.textContent = "неизвестно";
+  }
+
   labels.appendChild(label);
   btnCopy.appendChild(iconCopy);
   btns.appendChild(btnCopy);
   a.appendChild(vid);
   img.appendChild(labels);
   img.appendChild(btns);
+  img.appendChild(caption);
   img.appendChild(a);
   return img;
 }
@@ -299,7 +337,7 @@ function embedVideo(post, link) {
     return loadVideoDataFromURL(link.href, limit)
       .then(loadVideoTitle.bind(null, link.href))
       .then(loadVideo)
-      .then(makeScreenshot)
+      .then(makeScreenshot.bind(null, link.href))
       .then(makeThumbnail);
   };
   var part2 = function(thumb) {
