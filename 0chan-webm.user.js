@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.5.2
+// @version     0.5.3
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -101,9 +101,9 @@ function makeThumbnail(src) {
     var dst = document.createElement("canvas");
     if (src.width > src.height) {
       dst.width = THUMB_SIZE;
-      dst.height = THUMB_SIZE * src.height / src.width;
+      dst.height = Math.round(THUMB_SIZE * src.height / src.width);
     } else {
-      dst.width = THUMB_SIZE * src.width / src.height;
+      dst.width = Math.round(THUMB_SIZE * src.width / src.height);
       dst.height = THUMB_SIZE;
     }
     resolve(hqDownsampleInPlace(src, dst).toDataURL("image/jpeg"));
@@ -199,10 +199,17 @@ function createVideoElement(post, link, thumbnail) {
   var div = document.createElement("div");
   div.className = "post-img";
 
+  var labels = document.createElement("div");
+  labels.className = "post-img-labels";
+  var label = document.createElement("span");
+  label.className = "post-img-label post-img-gif-label";
+  label.textContent = "WebM";
+
   var expand = function() {
     if (attachments) attachments.style.maxHeight = "none";
     body.style.maxHeight = "none";
     btns.style.display = "block";
+    labels.style.display = "none";
     vid.controls = true;
     vid.play();
   };
@@ -210,6 +217,7 @@ function createVideoElement(post, link, thumbnail) {
     if (attachments) attachments.style.maxHeight = attachHeight;
     body.style.maxHeight = bodyHeight;
     btns.style.display = "none";
+    labels.style.display = "block";
     vid.controls = false;
     vid.src = link.href;
   };
@@ -219,7 +227,6 @@ function createVideoElement(post, link, thumbnail) {
   vid.style.maxWidth = "100%";
   vid.style.maxHeight = "950px";
   vid.style.cursor = "pointer";
-  vid.style.border = "1px dashed #818181";
   vid.poster = thumbnail;
   vid.preload = "none";
   vid.loop = true;
@@ -272,12 +279,14 @@ function createVideoElement(post, link, thumbnail) {
     GM_setClipboard(vid.title);
   });
 
+  labels.appendChild(label);
   btnCopy.appendChild(iconCopy);
   btns.appendChild(btnCopy);
   btnOpen.appendChild(iconOpen);
   btns.appendChild(btnOpen);
-  div.appendChild(vid);
+  div.appendChild(labels);
   div.appendChild(btns);
+  div.appendChild(vid);
   return div;
 }
 
