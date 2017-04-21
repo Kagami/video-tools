@@ -156,11 +156,11 @@ function loadVideo(videoData) {
     var vid = document.createElement("video");
     vid.muted = true;
     vid.autoplay = false;
-    vid.addEventListener("error", function() {
-      reject(new Error("cannot load"));
-    });
     vid.addEventListener("loadeddata", function() {
       resolve(vid);
+    });
+    vid.addEventListener("error", function() {
+      reject(new Error("cannot load"));
     });
     vid.src = url;
   });
@@ -170,9 +170,9 @@ function makeScreenshot(vid) {
   return new Promise(function(resolve, reject) {
     var c = document.createElement("canvas");
     var ctx = c.getContext("2d");
+    c.width = vid.videoWidth;
+    c.height = vid.videoHeight;
     try {
-      c.width = vid.videoWidth;
-      c.height = vid.videoHeight;
       ctx.drawImage(vid, 0, 0);
     } catch(e) {
       reject(new Error("cannot decode"));
