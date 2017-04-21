@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.5.5
+// @version     0.5.6
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -216,6 +216,7 @@ function createVideoElement(post, link, thumbnail) {
   var minimize = function() {
     if (attachments) attachments.style.maxHeight = attachHeight;
     a.href = link.href;
+    // :hover state is not cleared for some reason so hide it manually.
     btns.style.display = "none";
     body.style.maxHeight = bodyHeight;
     labels.style.display = "block";
@@ -239,8 +240,7 @@ function createVideoElement(post, link, thumbnail) {
   vid.loop = true;
   vid.controls = false;
   vid.volume = getVolumeFromCache();
-  var title = getTitleFromCache(link.href);
-  vid.title = title ? (title + " | " + link.href) : link.href;
+  vid.title = getTitleFromCache(link.href) || link.href;
   vid.addEventListener("click", function(e) {
     if (vid.controls) {
       // <https://stackoverflow.com/a/22928167>.
