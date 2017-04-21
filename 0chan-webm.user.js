@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.5.3
+// @version     0.5.4
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -203,7 +203,7 @@ function createVideoElement(post, link, thumbnail) {
   labels.className = "post-img-labels";
   var label = document.createElement("span");
   label.className = "post-img-label post-img-gif-label";
-  label.textContent = "WebM";
+  label.textContent = link.href.endsWith(".mp4") ? "MP4" : "WebM";
 
   var expand = function() {
     if (attachments) attachments.style.maxHeight = "none";
