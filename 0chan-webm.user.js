@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.5.4
+// @version     0.5.5
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -196,8 +196,8 @@ function createVideoElement(post, link, thumbnail) {
   var attachments = post.querySelector(".post-inline-attachment");
   var attachHeight = attachments && attachments.style.maxHeight;
 
-  var div = document.createElement("div");
-  div.className = "post-img";
+  var img = document.createElement("div");
+  img.className = "post-img";
 
   var labels = document.createElement("div");
   labels.className = "post-img-labels";
@@ -207,20 +207,27 @@ function createVideoElement(post, link, thumbnail) {
 
   var expand = function() {
     if (attachments) attachments.style.maxHeight = "none";
+    a.removeAttribute("href");
     body.style.maxHeight = "none";
-    btns.style.display = "block";
     labels.style.display = "none";
     vid.controls = true;
     vid.play();
   };
   var minimize = function() {
     if (attachments) attachments.style.maxHeight = attachHeight;
-    body.style.maxHeight = bodyHeight;
+    a.href = link.href;
     btns.style.display = "none";
+    body.style.maxHeight = bodyHeight;
     labels.style.display = "block";
     vid.controls = false;
     vid.src = link.href;
   };
+
+  var a = document.createElement("a");
+  a.href = link.href;
+  a.addEventListener("mouseover", function() {
+    btns.style.display = "block";
+  });
 
   var vid = document.createElement("video");
   vid.style.display = "block";
@@ -241,9 +248,11 @@ function createVideoElement(post, link, thumbnail) {
       var rect = vid.getBoundingClientRect();
       var relY = e.clientY - rect.top;
       if (relY < rect.height - ctrlHeight) {
+        e.preventDefault();
         minimize();
       }
     } else {
+      e.preventDefault();
       expand();
     }
   });
@@ -254,21 +263,6 @@ function createVideoElement(post, link, thumbnail) {
 
   var btns = document.createElement("div");
   btns.className = "post-img-buttons";
-  btns.style.display = "none";
-
-  var btnOpen = document.createElement("a");
-  var iconOpen = document.createElement("i");
-  btnOpen.className = "post-img-button";
-  iconOpen.className = "fa fa-external-link-square";
-  btnOpen.style.minWidth = 0;
-  btnOpen.style.minHeight = 0;
-  btnOpen.style.color = "#333";
-  btnOpen.href = link.href;
-  btnOpen.setAttribute("target", "_blank");
-  btnOpen.title = "Open in new tab";
-  btnOpen.addEventListener("click", function() {
-    vid.pause();
-  });
 
   var btnCopy = document.createElement("span");
   var iconCopy = document.createElement("i");
@@ -282,12 +276,11 @@ function createVideoElement(post, link, thumbnail) {
   labels.appendChild(label);
   btnCopy.appendChild(iconCopy);
   btns.appendChild(btnCopy);
-  btnOpen.appendChild(iconOpen);
-  btns.appendChild(btnOpen);
-  div.appendChild(labels);
-  div.appendChild(btns);
-  div.appendChild(vid);
-  return div;
+  a.appendChild(vid);
+  img.appendChild(labels);
+  img.appendChild(btns);
+  img.appendChild(a);
+  return img;
 }
 
 function getThumbFromCache(url) {
