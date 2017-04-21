@@ -509,7 +509,7 @@ unsafeWindow._webmHandler = typeof exportFunction === "undefined"
   : exportFunction(handleThreads, unsafeWindow);
 
 function handleApp(container) {
-  var observer = new MutationObserver(function(mutations) {
+  var observer = new MutationObserver(function() {
     var app = unsafeWindow.app;
     if (!app.$bus) return;
     observer.disconnect();
