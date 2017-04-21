@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.5.6
+// @version     0.5.7
 // @grant       GM_xmlhttpRequest
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
@@ -394,7 +394,7 @@ function embedUpload(container) {
     icon.classList.remove("fa-file-video-o");
     icon.classList.add("fa-spinner", "fa-spin", "fa-fw");
     upload(input.files).then(function(urls) {
-      addText(urls.join("\n"));
+      addText(urls.join(" "));
     }, function(e) {
       // TODO: Use notifications.
       addText("upload fail: " + e.message);
