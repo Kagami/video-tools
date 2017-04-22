@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.6.1
+// @version     0.6.2
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -37,6 +37,14 @@ var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(host) {
   host = host.replace(/\./g, "\\.");
   return new RegExp("^https?://" + host + "/.+\\.(webm|mp4)$");
 });
+
+function getContentSize(headers) {
+  var range = headers
+    .split("\r\n")
+    .find(function(h) { return /^content-range:/i.test(h); });
+  if (!range) return 0;
+  return +range.split("/", 2)[1] || 0;
+}
 
 // Ported from 4chan-x (MIT).
 function getMatroskaTitle(data) {
@@ -96,20 +104,6 @@ function hqDownsampleInPlace(src, dst) {
   return src;
 }
 
-function makeThumbnail(src) {
-  return new Promise(function(resolve, reject) {
-    var dst = document.createElement("canvas");
-    if (src.width > src.height) {
-      dst.width = THUMB_SIZE;
-      dst.height = Math.round(THUMB_SIZE * src.height / src.width);
-    } else {
-      dst.width = Math.round(THUMB_SIZE * src.width / src.height);
-      dst.height = THUMB_SIZE;
-    }
-    resolve(hqDownsampleInPlace(src, dst).toDataURL("image/jpeg"));
-  });
-}
-
 function getMetadataFromCache(url) {
   var meta = localStorage.getItem("meta_" + url);
   try {
@@ -125,15 +119,7 @@ function saveMetadataToCache(url, meta) {
   localStorage.setItem("meta_" + url, JSON.stringify(meta));
 }
 
-function getContentSize(headers) {
-  var range = headers
-    .split("\r\n")
-    .find(function(h) { return /^content-range:/i.test(h); });
-  if (!range) return 0;
-  return +range.split("/", 2)[1] || 0;
-}
-
-function loadVideoDataFromURL(url, limit) {
+function loadVideoData(url, limit) {
   return new Promise(function(resolve, reject) {
     GM_xmlhttpRequest({
       url: url,
@@ -156,28 +142,22 @@ function loadVideoDataFromURL(url, limit) {
   });
 }
 
-function loadVideoTitle(url, videoData) {
-  return new Promise(function(resolve, reject) {
-    var title = getMatroskaTitle(videoData);
-    saveMetadataToCache(url, {title: title});
-    resolve(videoData);
-  });
-}
-
-function loadVideo(videoData) {
+function loadVideo(url, videoData) {
   return new Promise(function(resolve, reject) {
     var blob = new Blob([videoData]);
-    var url = URL.createObjectURL(blob);
+    var blobURL = URL.createObjectURL(blob);
     var vid = document.createElement("video");
     vid.muted = true;
     vid.autoplay = false;
     vid.addEventListener("loadeddata", function() {
+      var title = getMatroskaTitle(videoData);
+      saveMetadataToCache(url, {title: title});
       resolve(vid);
     });
     vid.addEventListener("error", function() {
       reject(new Error("can't load"));
     });
-    vid.src = url;
+    vid.src = blobURL;
   });
 }
 
@@ -199,6 +179,20 @@ function makeScreenshot(url, vid) {
     }
     saveMetadataToCache(url, {width: width, height: height});
     resolve(c);
+  });
+}
+
+function makeThumbnail(src) {
+  return new Promise(function(resolve, reject) {
+    var dst = document.createElement("canvas");
+    if (src.width > src.height) {
+      dst.width = THUMB_SIZE;
+      dst.height = Math.round(THUMB_SIZE * src.height / src.width);
+    } else {
+      dst.width = Math.round(THUMB_SIZE * src.width / src.height);
+      dst.height = THUMB_SIZE;
+    }
+    resolve(hqDownsampleInPlace(src, dst).toDataURL("image/jpeg"));
   });
 }
 
@@ -226,68 +220,8 @@ function createVideoElement(post, link, thumbnail) {
   label.className = "post-img-label post-img-gif-label";
   label.textContent = link.href.endsWith(".mp4") ? "MP4" : "WebM";
 
-  var expand = function() {
-    if (attachments) attachments.style.maxHeight = "none";
-    body.style.maxHeight = "none";
-    labels.style.display = "none";
-    caption.style.display = "none";
-    a.removeAttribute("href");
-    vid.volume = getVolumeFromCache();
-    vid.controls = true;
-    vid.play();
-  };
-  var minimize = function() {
-    if (attachments) attachments.style.maxHeight = attachHeight;
-    // :hover state is not cleared for some reason so hide it manually.
-    btns.style.display = "none";
-    body.style.maxHeight = bodyHeight;
-    labels.style.display = "block";
-    a.href = link.href;
-    vid.controls = false;
-    vid.src = link.href;
-  };
-
-  var a = document.createElement("a");
-  a.style.display = "block";
-  a.href = link.href;
-  a.addEventListener("mouseover", function() {
-    btns.style.display = "block";
-    if (!vid.controls) caption.style.display = "block";
-  });
-
-  var vid = document.createElement("video");
-  vid.style.display = "block";
-  vid.style.maxWidth = "100%";
-  vid.style.maxHeight = "950px";
-  vid.style.cursor = "pointer";
-  vid.poster = thumbnail;
-  vid.preload = "none";
-  vid.loop = true;
-  vid.controls = false;
-  vid.title = meta.title;
-  vid.addEventListener("click", function(e) {
-    if (vid.controls) {
-      // <https://stackoverflow.com/a/22928167>.
-      var ctrlHeight = 50;
-      var rect = vid.getBoundingClientRect();
-      var relY = e.clientY - rect.top;
-      if (relY < rect.height - ctrlHeight) {
-        e.preventDefault();
-        minimize();
-      }
-    } else {
-      e.preventDefault();
-      expand();
-    }
-  });
-  vid.addEventListener("volumechange", function() {
-    saveVolumeToCache(vid.volume);
-  });
-  vid.src = link.href;
-
   var btns = document.createElement("div");
   btns.className = "post-img-buttons";
-
   var btnCopy = document.createElement("span");
   var iconCopy = document.createElement("i");
   btnCopy.className = "post-img-button";
@@ -314,6 +248,64 @@ function createVideoElement(post, link, thumbnail) {
     caption.textContent = "неизвестно";
   }
 
+  var expand = function() {
+    if (attachments) attachments.style.maxHeight = "none";
+    body.style.maxHeight = "none";
+    labels.style.display = "none";
+    caption.style.display = "none";
+    a.removeAttribute("href");
+    vid.volume = getVolumeFromCache();
+    vid.controls = true;
+    vid.play();
+  };
+  var minimize = function() {
+    if (attachments) attachments.style.maxHeight = attachHeight;
+    body.style.maxHeight = bodyHeight;
+    labels.style.display = "block";
+    // :hover state is not cleared for some reason so hide it manually.
+    btns.style.display = "none";
+    a.href = link.href;
+    vid.controls = false;
+    vid.src = link.href;
+  };
+
+  var a = document.createElement("a");
+  a.style.display = "block";
+  a.href = link.href;
+  var vid = document.createElement("video");
+  vid.style.display = "block";
+  vid.style.maxWidth = "100%";
+  vid.style.maxHeight = "950px";
+  vid.style.cursor = "pointer";
+  vid.poster = thumbnail;
+  vid.preload = "none";
+  vid.loop = true;
+  vid.controls = false;
+  vid.title = meta.title;
+  vid.addEventListener("mouseover", function() {
+    btns.style.display = "block";
+    if (!vid.controls) caption.style.display = "block";
+  });
+  vid.addEventListener("click", function(e) {
+    if (vid.controls) {
+      // <https://stackoverflow.com/a/22928167>.
+      var ctrlHeight = 50;
+      var rect = vid.getBoundingClientRect();
+      var relY = e.clientY - rect.top;
+      if (relY < rect.height - ctrlHeight) {
+        e.preventDefault();
+        minimize();
+      }
+    } else {
+      e.preventDefault();
+      expand();
+    }
+  });
+  vid.addEventListener("volumechange", function() {
+    saveVolumeToCache(vid.volume);
+  });
+  vid.src = link.href;
+
   labels.appendChild(label);
   btnCopy.appendChild(iconCopy);
   btns.appendChild(btnCopy);
@@ -338,9 +330,8 @@ function saveThumbToCache(url, thumb) {
 function embedVideo(post, link) {
   var cachedThumb = getThumbFromCache(link.href);
   var part1 = function(limit) {
-    return loadVideoDataFromURL(link.href, limit)
-      .then(loadVideoTitle.bind(null, link.href))
-      .then(loadVideo)
+    return loadVideoData(link.href, limit)
+      .then(loadVideo.bind(null, link.href))
       .then(makeScreenshot.bind(null, link.href))
       .then(makeThumbnail);
   };
