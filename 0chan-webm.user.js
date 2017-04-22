@@ -39,7 +39,7 @@ var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(host) {
 });
 
 // Ported from 4chan-x (MIT).
-function parseTitle(data) {
+function getMatroskaTitle(data) {
   var i = 0;
   var element = 0;
   var size = 0;
@@ -82,8 +82,8 @@ function hqDownsampleInPlace(src, dst) {
   var dW = dst.width;
   var dH = dst.height;
   do {
-    cW /= 2;
-    cH /= 2;
+    cW = Math.floor(cW / 2);
+    cH = Math.floor(cH / 2);
     if (cW < dW) cW = dW;
     if (cH < dH) cH = dH;
     dst.width = cW;
@@ -125,7 +125,7 @@ function saveMetadataToCache(url, meta) {
   localStorage.setItem("meta_" + url, JSON.stringify(meta));
 }
 
-function getVideoSize(headers) {
+function getContentSize(headers) {
   var range = headers
     .split("\r\n")
     .find(function(h) { return /^content-range:/i.test(h); });
@@ -144,7 +144,7 @@ function loadVideoDataFromURL(url, limit) {
       },
       onload: function(res) {
         if (res.status >= 200 && res.status < 400) {
-          var size = getVideoSize(res.responseHeaders);
+          var size = getContentSize(res.responseHeaders);
           saveMetadataToCache(url, {size: size});
           resolve(new Uint8Array(res.response));
         } else {
@@ -158,7 +158,7 @@ function loadVideoDataFromURL(url, limit) {
 
 function loadVideoTitle(url, videoData) {
   return new Promise(function(resolve, reject) {
-    var title = parseTitle(videoData);
+    var title = getMatroskaTitle(videoData);
     saveMetadataToCache(url, {title: title});
     resolve(videoData);
   });
@@ -175,7 +175,7 @@ function loadVideo(videoData) {
       resolve(vid);
     });
     vid.addEventListener("error", function() {
-      reject(new Error("cannot load"));
+      reject(new Error("can't load"));
     });
     vid.src = url;
   });
@@ -187,10 +187,14 @@ function makeScreenshot(url, vid) {
     var ctx = c.getContext("2d");
     var width = c.width = vid.videoWidth;
     var height = c.height = vid.videoHeight;
+    if (width <= 0 || width > 4096 || height <= 0 || height > 4096) {
+      reject(new Error("bad dimensions"));
+      return;
+    }
     try {
       ctx.drawImage(vid, 0, 0);
     } catch(e) {
-      reject(new Error("cannot decode"));
+      reject(new Error("can't decode"));
       return;
     }
     saveMetadataToCache(url, {width: width, height: height});
@@ -224,21 +228,21 @@ function createVideoElement(post, link, thumbnail) {
 
   var expand = function() {
     if (attachments) attachments.style.maxHeight = "none";
-    a.removeAttribute("href");
     body.style.maxHeight = "none";
     labels.style.display = "none";
     caption.style.display = "none";
+    a.removeAttribute("href");
     vid.volume = getVolumeFromCache();
     vid.controls = true;
     vid.play();
   };
   var minimize = function() {
     if (attachments) attachments.style.maxHeight = attachHeight;
-    a.href = link.href;
     // :hover state is not cleared for some reason so hide it manually.
     btns.style.display = "none";
     body.style.maxHeight = bodyHeight;
     labels.style.display = "block";
+    a.href = link.href;
     vid.controls = false;
     vid.src = link.href;
   };
@@ -436,7 +440,7 @@ function embedUpload(container) {
       addText(urls.join(" "));
     }, function(e) {
       // TODO: Use notifications.
-      addText("upload fail: " + e.message);
+      addText("upload failed: " + e.message);
     }).then(function() {
       button.disabled = false;
       icon.classList.remove("fa-spinner", "fa-spin", "fa-fw");
