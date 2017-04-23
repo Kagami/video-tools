@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.6.3
+// @version     0.6.4
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -144,7 +144,8 @@ function loadVideoData(url, limit) {
 
 function loadVideo(url, videoData) {
   return new Promise(function(resolve, reject) {
-    var blob = new Blob([videoData]);
+    var type = url.endsWith(".mp4") ? "video/mp4" : "video/webm";
+    var blob = new Blob([videoData], {type: type});
     var blobURL = URL.createObjectURL(blob);
     var vid = document.createElement("video");
     vid.muted = true;
