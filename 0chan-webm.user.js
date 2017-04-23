@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.6.2
+// @version     0.6.3
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -21,7 +21,7 @@
 // @connect     4chan.org
 // ==/UserScript==
 
-var LOAD_BYTES1 = 150 * 1024;
+var LOAD_BYTES1 = 100 * 1024;
 var LOAD_BYTES2 = 600 * 1024;
 var THUMB_SIZE = 200;
 var THUMB_VERSION = 2;
@@ -126,7 +126,7 @@ function loadVideoData(url, limit) {
       method: "GET",
       responseType: "arraybuffer",
       headers: {
-        Range: "bytes=0-" + limit,
+        Range: "bytes=0-" + (limit-1),
       },
       onload: function(res) {
         if (res.status >= 200 && res.status < 400) {
@@ -161,7 +161,7 @@ function loadVideo(url, videoData) {
   });
 }
 
-function makeScreenshot(url, vid) {
+function makeScreenshot(firstPass, url, vid) {
   return new Promise(function(resolve, reject) {
     var c = document.createElement("canvas");
     var ctx = c.getContext("2d");
@@ -176,6 +176,19 @@ function makeScreenshot(url, vid) {
     } catch(e) {
       reject(new Error("can't decode"));
       return;
+    }
+    if (firstPass) {
+      var imgData = ctx.getImageData(0, 0, width, height).data;
+      var fullBlack = imgData.every(function(v, i) {
+        // [0, 0, 0, 255, 0, 0, 0, 255, ...]
+        var rgb = (i + 1) & 3;
+        return v === (rgb ? 0 : 255);
+      });
+      // Opera may return black frame if not enough data were loaded.
+      if (fullBlack) {
+        reject(new Error("black frame"));
+        return;
+      }
     }
     saveMetadataToCache(url, {width: width, height: height});
     resolve(c);
@@ -328,11 +341,12 @@ function saveThumbToCache(url, thumb) {
 }
 
 function embedVideo(post, link) {
+  var firstPass = true;
   var cachedThumb = getThumbFromCache(link.href);
   var part1 = function(limit) {
     return loadVideoData(link.href, limit)
       .then(loadVideo.bind(null, link.href))
-      .then(makeScreenshot.bind(null, link.href))
+      .then(makeScreenshot.bind(null, firstPass, link.href))
       .then(makeThumbnail);
   };
   var part2 = function(thumb) {
@@ -359,6 +373,7 @@ function embedVideo(post, link) {
       if ((e.message || "").startsWith("HTTP ")) {
         partErr(e);
       } else {
+        firstPass = false;
         part1(LOAD_BYTES2).then(part2).catch(partErr);
       }
     });
