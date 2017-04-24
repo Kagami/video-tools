@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.6.4
+// @version     0.6.5
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -104,13 +104,21 @@ function hqDownsampleInPlace(src, dst) {
   return src;
 }
 
+function showTime(duration) {
+  var pad2 = function(n) {
+    n |= 0;
+    return (n < 10 ? "0" : "") + n;
+  };
+  return pad2(duration / 60) + ":" + pad2(duration % 60);
+}
+
 function getMetadataFromCache(url) {
   var meta = localStorage.getItem("meta_" + url);
   try {
     if (!meta) throw new Error();
     return JSON.parse(meta);
   } catch(e) {
-    return {size: 0, width: 0, height: 0, title: ""};
+    return {size: 0, width: 0, height: 0, duration: 0, title: ""};
   }
 }
 
@@ -151,8 +159,9 @@ function loadVideo(url, videoData) {
     vid.muted = true;
     vid.autoplay = false;
     vid.addEventListener("loadeddata", function() {
+      var duration = vid.duration;
       var title = getMatroskaTitle(videoData);
-      saveMetadataToCache(url, {title: title});
+      saveMetadataToCache(url, {duration: duration, title: title});
       resolve(vid);
     });
     vid.addEventListener("error", function() {
@@ -178,6 +187,7 @@ function makeScreenshot(firstPass, url, vid) {
       reject(new Error("can't decode"));
       return;
     }
+    // Opera may return black frame if not enough data were loaded.
     if (firstPass) {
       var imgData = ctx.getImageData(0, 0, width, height).data;
       var fullBlack = imgData.every(function(v, i) {
@@ -185,7 +195,6 @@ function makeScreenshot(firstPass, url, vid) {
         var rgb = (i + 1) & 3;
         return v === (rgb ? 0 : 255);
       });
-      // Opera may return black frame if not enough data were loaded.
       if (fullBlack) {
         reject(new Error("black frame"));
         return;
@@ -257,6 +266,10 @@ function createVideoElement(post, link, thumbnail) {
     } else {
       caption.textContent += (meta.size / 1024).toFixed(2);
       caption.textContent += "Кб";
+    }
+    if (meta.duration) {
+      caption.textContent += ", ";
+      caption.textContent += showTime(Math.ceil(meta.duration));
     }
   } else {
     caption.textContent = "неизвестно";
