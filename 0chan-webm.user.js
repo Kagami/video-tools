@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.6.6
+// @version     0.6.7
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -269,7 +269,7 @@ function createVideoElement(post, link, thumb) {
     }
     if (meta.duration) {
       caption.textContent += ", ";
-      caption.textContent += showTime(Math.ceil(meta.duration));
+      caption.textContent += showTime(Math.round(meta.duration));
     }
   } else {
     caption.textContent = "неизвестно";
