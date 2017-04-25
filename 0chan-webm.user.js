@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.6.5
+// @version     0.6.6
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -227,15 +227,15 @@ function saveVolumeToCache(volume) {
   localStorage.setItem("webm_volume", volume);
 }
 
-function createVideoElement(post, link, thumbnail) {
+function createVideoElement(post, link, thumb) {
   var meta = getMetadataFromCache(link.href);
   var body = post.querySelector(".post-body-message");
   var bodyHeight = body.style.maxHeight;
   var attachments = post.querySelector(".post-inline-attachment");
   var attachHeight = attachments && attachments.style.maxHeight;
 
-  var img = document.createElement("div");
-  img.className = "post-img";
+  var container = document.createElement("div");
+  container.className = "post-img";
 
   var labels = document.createElement("div");
   labels.className = "post-img-labels";
@@ -280,68 +280,65 @@ function createVideoElement(post, link, thumbnail) {
     body.style.maxHeight = "none";
     labels.style.display = "none";
     caption.style.display = "none";
-    a.removeAttribute("href");
+    container.replaceChild(vid, a);
     vid.volume = getVolumeFromCache();
-    vid.controls = true;
+    vid.src = link.href;
     vid.play();
   };
   var minimize = function() {
     if (attachments) attachments.style.maxHeight = attachHeight;
     body.style.maxHeight = bodyHeight;
     labels.style.display = "block";
-    // :hover state is not cleared for some reason so hide it manually.
-    btns.style.display = "none";
-    a.href = link.href;
-    vid.controls = false;
-    vid.src = link.href;
+    caption.style.display = "block";
+    container.replaceChild(a, vid);
+    vid.pause();
+    vid.removeAttribute("src");
+    vid.load();
   };
 
   var a = document.createElement("a");
   a.style.display = "block";
+  a.style.outline = "none";
+  a.title = meta.title;
   a.href = link.href;
+  var img = document.createElement("img");
+  img.style.display = "block";
+  img.src = thumb;
+  a.addEventListener("click", function(e) {
+    e.preventDefault();
+    expand();
+  });
+
   var vid = document.createElement("video");
   vid.style.display = "block";
   vid.style.maxWidth = "100%";
   vid.style.maxHeight = "950px";
   vid.style.cursor = "pointer";
-  vid.poster = thumbnail;
-  vid.preload = "none";
   vid.loop = true;
-  vid.controls = false;
+  vid.controls = true;
   vid.title = meta.title;
-  vid.addEventListener("mouseover", function() {
-    btns.style.display = "block";
-    if (!vid.controls) caption.style.display = "block";
-  });
   vid.addEventListener("click", function(e) {
-    if (vid.controls) {
-      // <https://stackoverflow.com/a/22928167>.
-      var ctrlHeight = 50;
-      var rect = vid.getBoundingClientRect();
-      var relY = e.clientY - rect.top;
-      if (relY < rect.height - ctrlHeight) {
-        e.preventDefault();
-        minimize();
-      }
-    } else {
-      e.preventDefault();
-      expand();
+    // <https://stackoverflow.com/a/22928167>.
+    var ctrlHeight = 50;
+    var rect = vid.getBoundingClientRect();
+    var relY = e.clientY - rect.top;
+    if (relY < rect.height - ctrlHeight) {
+      minimize();
     }
   });
   vid.addEventListener("volumechange", function() {
     saveVolumeToCache(vid.volume);
   });
-  vid.src = link.href;
 
   labels.appendChild(label);
   btnCopy.appendChild(iconCopy);
   btns.appendChild(btnCopy);
-  a.appendChild(vid);
-  img.appendChild(labels);
-  if (vid.title) img.appendChild(btns);
-  img.appendChild(caption);
-  img.appendChild(a);
-  return img;
+  a.appendChild(img);
+  container.appendChild(labels);
+  if (meta.title) container.appendChild(btns);
+  container.appendChild(caption);
+  container.appendChild(a);
+  return container;
 }
 
 function getThumbFromCache(url) {
