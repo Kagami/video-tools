@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.6.7
+// @version     0.6.8
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -112,6 +112,26 @@ function showTime(duration) {
   return pad2(duration / 60) + ":" + pad2(duration % 60);
 }
 
+function setCacheItem(name, value) {
+  try {
+    localStorage.setItem(name, value);
+  } catch(e) {
+    if (e.name !== "QuotaExceededError" &&
+        e.name !== "NS_ERROR_DOM_QUOTA_REACHED")
+      throw e;
+    var sessionId = localStorage.getItem("sessionId");
+    var volume = localStorage.getItem("webm_volume");
+    localStorage.clear();
+    localStorage.setItem("sessionId", sessionId);
+    localStorage.setItem("webm_volume", volume);
+    localStorage.setItem(name, value);
+  }
+}
+
+function hasMetadataInCache(url) {
+  return localStorage.getItem("meta_" + url) !== null;
+}
+
 function getMetadataFromCache(url) {
   var meta = localStorage.getItem("meta_" + url);
   try {
@@ -124,7 +144,7 @@ function getMetadataFromCache(url) {
 
 function saveMetadataToCache(url, meta) {
   meta = Object.assign({}, getMetadataFromCache(url), meta);
-  localStorage.setItem("meta_" + url, JSON.stringify(meta));
+  setCacheItem("meta_" + url, JSON.stringify(meta));
 }
 
 function loadVideoData(url, limit) {
@@ -224,7 +244,7 @@ function getVolumeFromCache() {
 }
 
 function saveVolumeToCache(volume) {
-  localStorage.setItem("webm_volume", volume);
+  setCacheItem("webm_volume", volume);
 }
 
 function createVideoElement(post, link, thumb) {
@@ -348,11 +368,12 @@ function getThumbFromCache(url) {
 
 function saveThumbToCache(url, thumb) {
   var key = "thumb_v" + THUMB_VERSION + "_" + url;
-  localStorage.setItem(key, thumb);
+  setCacheItem(key, thumb);
 }
 
 function embedVideo(post, link) {
   var firstPass = true;
+  var hasMeta = hasMetadataInCache(link.href);
   var cachedThumb = getThumbFromCache(link.href);
   var part1 = function(limit) {
     return loadVideoData(link.href, limit)
@@ -375,7 +396,7 @@ function embedVideo(post, link) {
                   " : " + e.message);
   };
 
-  if (cachedThumb) {
+  if (cachedThumb && hasMeta) {
     part2(cachedThumb).catch(partErr);
   } else {
     part1(LOAD_BYTES1).then(function(thumb) {
