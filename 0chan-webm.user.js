@@ -6,16 +6,18 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.6.8
+// @version     0.7.0
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
+// @connect     safe.moe
+// @connect     pomf.space
+// @connect     doko.moe
+// @connect     lewd.es
+// @connect     null.vg
+// @connect     memenet.org
 // @connect     mixtape.moe
-// @connect     u.nya.is
-// @connect     a.safe.moe
-// @connect     a.pomf.cat
 // @connect     gfycat.com
-// @connect     0x0.st
 // @connect     2ch.hk
 // @connect     brchan.org
 // @connect     4chan.org
@@ -25,17 +27,31 @@ var LOAD_BYTES1 = 100 * 1024;
 var LOAD_BYTES2 = 600 * 1024;
 var THUMB_SIZE = 200;
 var THUMB_VERSION = 2;
-var UPLOAD_HOST = "safe.moe";
+var UPLOAD_HOSTS = [
+  {host: "safe.moe", maxSizeMB: 200, api: "loli-safe"},
+  {host: "pomf.space", maxSizeMB: 256, api: "pomf"},
+  {host: "doko.moe", maxSizeMB: 2048, api: "pomf"},
+  {host: "lewd.es", maxSizeMB: 500, api: "pomf"},
+  {host: "null.vg", maxSizeMB: 128, api: "pomf"},
+  {host: "memenet.org", maxSizeMB: 128, api: "pomf"},
+  {host: "mixtape.moe", maxSizeMB: 100, api: "pomf"},
+];
 var ALLOWED_HOSTS = [
-  "[a-z0-9]+.mixtape.moe", "u.nya.is",
-  "a.safe.moe", "a.pomf.cat",
+  "a.safe.moe",
+  "a.pomf.space",
+  "a.doko.moe",
+  "p.lewd.es",
+  "dev.null.vg",
+  "i.memenet.org",
+  "my.mixtape.moe",
   "[a-z0-9]+.gfycat.com",
-  "0x0.st",
-  "2ch.hk", "brchan.org", "[a-z0-9]+.4chan.org",
+  "2ch.hk",
+  "brchan.org",
+  "[a-z0-9]+.4chan.org",
 ];
 var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(host) {
   host = host.replace(/\./g, "\\.");
-  return new RegExp("^https?://" + host + "/.+\\.(webm|mp4)$");
+  return new RegExp("^https://" + host + "/.+\\.(webm|mp4)$");
 });
 
 function getContentSize(headers) {
@@ -198,14 +214,12 @@ function makeScreenshot(firstPass, url, vid) {
     var width = c.width = vid.videoWidth;
     var height = c.height = vid.videoHeight;
     if (width <= 0 || width > 4096 || height <= 0 || height > 4096) {
-      reject(new Error("bad dimensions"));
-      return;
+      throw new Error("bad dimensions");
     }
     try {
       ctx.drawImage(vid, 0, 0);
     } catch(e) {
-      reject(new Error("can't decode"));
-      return;
+      throw new Error("can't decode");
     }
     // Opera may return black frame if not enough data were loaded.
     if (firstPass) {
@@ -216,8 +230,7 @@ function makeScreenshot(firstPass, url, vid) {
         return v === (rgb ? 0 : 255);
       });
       if (fullBlack) {
-        reject(new Error("black frame"));
-        return;
+        throw new Error("black frame");
       }
     }
     saveMetadataToCache(url, {width: width, height: height});
@@ -421,29 +434,49 @@ function handlePost(post) {
   }).forEach(embedVideo.bind(null, post));
 }
 
-function upload(files) {
+function getUploadURL(host) {
+  if (host.api === "pomf") {
+    return "https://" + host.host + "/upload.php";
+  } else if (host.api === "loli-safe") {
+    return "https://" + host.host + "/api/upload";
+  } else {
+    throw new Error("unknown upload API");
+  }
+}
+
+function getFileURL(host, file) {
+  if (host.host === "doko.moe") {
+    // WTF, doko?
+    return "https://a.doko.moe/" + file.url;
+  } else {
+    return file.url;
+  }
+}
+
+function upload(host, files) {
   return new Promise(function(resolve, reject) {
-    var url = "https://" + UPLOAD_HOST + "/api/upload";
     var form = new FormData();
     Array.prototype.forEach.call(files, function(file) {
       form.append("files[]", file);
     });
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", url, true);
-    xhr.onload = function() {
-      if (this.status >= 200 && this.status < 400) {
-        var info = JSON.parse(this.responseText);
-        if (info.success) {
-          resolve(info.files.map(function(f) { return f.url; }));
+    GM_xmlhttpRequest({
+      url: getUploadURL(host),
+      method: "POST",
+      data: form,
+      onload: function(res) {
+        if (res.status >= 200 && res.status < 400) {
+          var info = JSON.parse(res.responseText);
+          if (info.success) {
+            resolve(info.files.map(getFileURL.bind(null, host)));
+          } else {
+            reject(new Error(info.description.code));
+          }
         } else {
-          reject(new Error(info.description.code));
+          reject(new Error(res.status));
         }
-      } else {
-        reject(new Error(this.status));
-      }
-    };
-    xhr.onerror = reject;
-    xhr.send(form);
+      },
+      onerror: reject,
+    });
   });
 }
 
@@ -454,15 +487,35 @@ function embedUpload(container) {
   };
 
   var buttons = container.querySelector(".attachment-btns");
+
+  var dropdown = document.createElement("div");
+  dropdown.className = "btn-group";
   var button = document.createElement("button");
-  button.className = "btn btn-xs btn-default";
+  button.className = "btn btn-xs btn-default dropdown-toggle";
   button.style.marginLeft = "3px";
   button.addEventListener("click", function() {
-    input.click();
+    dropdown.classList.toggle("open");
   });
-
   var icon = document.createElement("i");
   icon.className = "fa fa-file-video-o";
+  var caret = document.createElement("span");
+  caret.className = "caret";
+
+  var menu = document.createElement("ul");
+  menu.className = "dropdown-menu";
+  var selectedHost = null;
+  UPLOAD_HOSTS.forEach(function(host) {
+    var item = document.createElement("li");
+    var link = document.createElement("a");
+    link.textContent = "Через " + host.host + " (" + host.maxSizeMB + "Мб)";
+    link.addEventListener("click", function() {
+      selectedHost = host;
+      dropdown.classList.remove("open");
+      input.click();
+    });
+    item.appendChild(link);
+    menu.appendChild(item);
+  });
 
   var input = document.createElement("input");
   input.style.display = "none";
@@ -474,7 +527,7 @@ function embedUpload(container) {
     button.disabled = true;
     icon.classList.remove("fa-file-video-o");
     icon.classList.add("fa-spinner", "fa-spin", "fa-fw");
-    upload(input.files).then(function(urls) {
+    upload(selectedHost, input.files).then(function(urls) {
       addText(urls.join(" "));
     }, function(e) {
       // TODO: Use notifications.
@@ -489,9 +542,12 @@ function embedUpload(container) {
   });
 
   button.appendChild(icon);
-  button.appendChild(document.createTextNode(" Прикрепить"));
+  button.appendChild(document.createTextNode(" Прикрепить "));
+  button.appendChild(caret);
+  dropdown.appendChild(button);
+  dropdown.appendChild(menu);
   buttons.parentNode.appendChild(input);
-  buttons.appendChild(button);
+  buttons.appendChild(dropdown);
 }
 
 function handlePosts(container) {
