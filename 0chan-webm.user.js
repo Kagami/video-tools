@@ -6,17 +6,17 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.7.0
+// @version     0.7.1
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
 // @connect     safe.moe
 // @connect     pomf.space
 // @connect     doko.moe
-// @connect     lewd.es
 // @connect     null.vg
 // @connect     memenet.org
 // @connect     mixtape.moe
+// @connect     lewd.es
 // @connect     gfycat.com
 // @connect     2ch.hk
 // @connect     brchan.org
@@ -31,19 +31,19 @@ var UPLOAD_HOSTS = [
   {host: "safe.moe", maxSizeMB: 200, api: "loli-safe"},
   {host: "pomf.space", maxSizeMB: 256, api: "pomf"},
   {host: "doko.moe", maxSizeMB: 2048, api: "pomf"},
-  {host: "lewd.es", maxSizeMB: 500, api: "pomf"},
   {host: "null.vg", maxSizeMB: 128, api: "pomf"},
   {host: "memenet.org", maxSizeMB: 128, api: "pomf"},
   {host: "mixtape.moe", maxSizeMB: 100, api: "pomf"},
+  {host: "lewd.es", maxSizeMB: 500, api: "pomf"},
 ];
 var ALLOWED_HOSTS = [
   "a.safe.moe",
   "a.pomf.space",
   "a.doko.moe",
-  "p.lewd.es",
   "dev.null.vg",
   "i.memenet.org",
   "my.mixtape.moe",
+  "p.lewd.es",
   "[a-z0-9]+.gfycat.com",
   "2ch.hk",
   "brchan.org",
