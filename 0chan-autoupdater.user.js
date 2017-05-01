@@ -6,11 +6,11 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-autoupdater.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.1
+// @version     0.0.3
 // @grant       none
 // ==/UserScript==
 
-var UPDATE_INTERVAL = 30 * 1000;
+var UPDATE_INTERVAL = 15 * 1000;
 
 var atThread = false;
 var tid = null;
