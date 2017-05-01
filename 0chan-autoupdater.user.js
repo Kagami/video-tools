@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-autoupdater.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.4
+// @version     0.0.5
 // @grant       none
 // ==/UserScript==
 
@@ -34,14 +34,14 @@ var Favicon = (function() {
         this.reset();
         return;
       }
-      n = Math.min(n, 99);
+      n = Math.min(n, 9);
       // TODO: Wait for favicon load?
       ctx.drawImage(orig, 0, 0);
       ctx.fillStyle = "#f00";
-      ctx.fillRect(10, 7, 6, 8);
+      ctx.fillRect(8, 5, 8, 11);
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 10px sans-serif";
-      ctx.fillText(n, 10, 14);
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText(n, 8, 15);
       link.href = c.toDataURL();
     },
     // TODO: Make sure it's cached.
