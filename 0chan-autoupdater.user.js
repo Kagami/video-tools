@@ -12,7 +12,7 @@
 
 var UPDATE_INTERVAL = 15 * 1000;
 
-var atThread = false;
+var inThread = false;
 var tid = null;
 var unread = 0;
 
@@ -51,7 +51,6 @@ var Favicon = (function() {
 })();
 
 function update() {
-  // console.log("@@@ DOING UPDATE");
   // TODO: Cache button?
   var btn = document.querySelector(".threads > .btn-group > .btn-default");
   if (btn && !btn.querySelector(".fa-spin")) {
@@ -61,9 +60,7 @@ function update() {
 }
 
 function initUpdater() {
-  // console.log("@@@ TRY INIT UPDATE", atThread, document.hidden, tid);
-  if (atThread && document.hidden && tid == null) {
-    // console.log("@@@ INIT UPDATE");
+  if (inThread && document.hidden && tid == null) {
     tid = setTimeout(update, UPDATE_INTERVAL);
   }
 }
@@ -76,19 +73,16 @@ function clearUpdater() {
 }
 
 function handleVisibility() {
-  document.addEventListener("visibilitychange", function() {
-    if (document.hidden) {
-      initUpdater();
-    } else {
-      clearUpdater();
-    }
-  });
+  if (document.hidden) {
+    initUpdater();
+  } else {
+    clearUpdater();
+  }
 }
 
 function handlePosting(container) {
   // TODO: Make sure it's properly GCed.
   var observer = new MutationObserver(function(mutations) {
-    // TODO: Disconnect if visible?
     if (!document.hidden) return;
     mutations.forEach(function(mutation) {
       Array.prototype.forEach.call(mutation.addedNodes, function(node) {
@@ -110,12 +104,11 @@ function handleNavigation() {
   var thread = document.querySelector(".threads");
   clearUpdater();
   if (thread) {
-    // console.log("@@@ AT THREAD");
-    atThread = true;
+    inThread = true;
     initUpdater();
     handlePosting(thread);
   } else {
-    atThread = false;
+    inThread = false;
   }
 }
 
@@ -128,5 +121,5 @@ function handleApp(container) {
   observer.observe(container, {childList: true});
 }
 
-handleVisibility();
 handleApp(document.body);
+document.addEventListener("visibilitychange", handleVisibility);
