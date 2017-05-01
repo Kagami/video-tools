@@ -6,12 +6,13 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-autoupdater.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.3
+// @version     0.0.4
 // @grant       none
 // ==/UserScript==
 
 var UPDATE_INTERVAL = 15 * 1000;
 
+var updateBtn = null;
 var inThread = false;
 var tid = null;
 var unread = 0;
@@ -28,13 +29,13 @@ var Favicon = (function() {
   });
   orig.src = origURL;
   return {
-    // TODO: Wait for favicon load?
     set: function(n) {
       if (n <= 0) {
         this.reset();
         return;
       }
       n = Math.min(n, 99);
+      // TODO: Wait for favicon load?
       ctx.drawImage(orig, 0, 0);
       ctx.fillStyle = "#f00";
       ctx.fillRect(10, 7, 6, 8);
@@ -51,10 +52,8 @@ var Favicon = (function() {
 })();
 
 function update() {
-  // TODO: Cache button?
-  var btn = document.querySelector(".threads > .btn-group > .btn-default");
-  if (btn && !btn.querySelector(".fa-spin")) {
-    btn.click();
+  if (!updateBtn.querySelector(".fa-spin")) {
+    updateBtn.click();
   }
   tid = setTimeout(update, UPDATE_INTERVAL);
 }
@@ -104,6 +103,7 @@ function handleNavigation() {
   var thread = document.querySelector(".threads");
   clearUpdater();
   if (thread) {
+    updateBtn = document.querySelector(".threads > .btn-group > .btn-default");
     inThread = true;
     initUpdater();
     handlePosting(thread);
