@@ -10,7 +10,7 @@
 // @grant       none
 // ==/UserScript==
 
-var UPDATE_INTERVAL = 10 * 1000;
+var UPDATE_INTERVAL = 30 * 1000;
 
 var atThread = false;
 var tid = null;
