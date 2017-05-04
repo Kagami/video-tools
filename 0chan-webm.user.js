@@ -6,8 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.7.3
-// @run-at      document-start
+// @version     0.7.4
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -609,15 +608,19 @@ unsafeWindow._webmHandler = typeof exportFunction === "undefined"
   : exportFunction(handleThreads, unsafeWindow);
 
 function handleApp(container) {
+  // `unsafeWindow.app.$bus` reference doesn't work in some UA.
+  var app = unsafeWindow.app;
+  if (app && app.$bus) {
+    app.$bus.on("refreshContentDone", unsafeWindow._webmHandler);
+    return;
+  }
   var observer = new MutationObserver(function() {
     var app = unsafeWindow.app;
-    if (!app.$bus) return;
+    if (!app || !app.$bus) return;
     observer.disconnect();
     app.$bus.on("refreshContentDone", unsafeWindow._webmHandler);
   });
   observer.observe(container, {childList: true});
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-  handleApp(document.body);
-});
+handleApp(document.body);
