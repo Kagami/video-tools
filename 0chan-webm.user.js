@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.7.1
+// @version     0.7.2
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -316,7 +316,6 @@ function createVideoElement(post, link, thumb) {
     container.replaceChild(vid, a);
     vid.volume = getVolumeFromCache();
     vid.src = link.href;
-    vid.play();
   };
   var minimize = function() {
     if (attachments) attachments.style.maxHeight = attachHeight;
@@ -348,6 +347,7 @@ function createVideoElement(post, link, thumb) {
   vid.style.maxHeight = "950px";
   vid.style.cursor = "pointer";
   vid.loop = true;
+  vid.autoplay = true;
   vid.controls = true;
   vid.title = meta.title;
   vid.addEventListener("click", function(e) {
