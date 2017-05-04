@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-autoupdater.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.5
+// @version     0.0.6
 // @grant       none
 // ==/UserScript==
 
@@ -16,6 +16,8 @@ var updateBtn = null;
 var inThread = false;
 var tid = null;
 var unread = 0;
+var observePosting = null;
+var ignorePosting = null;
 
 var Favicon = (function() {
   var c = document.createElement("canvas");
@@ -44,7 +46,6 @@ var Favicon = (function() {
       ctx.fillText(n, 8, 15);
       link.href = c.toDataURL();
     },
-    // TODO: Make sure it's cached.
     reset: function() {
       link.href = origURL;
     },
@@ -52,23 +53,25 @@ var Favicon = (function() {
 })();
 
 function update() {
-  if (!updateBtn.querySelector(".fa-spin")) {
-    updateBtn.click();
-  }
+  updateBtn.click();
   tid = setTimeout(update, UPDATE_INTERVAL);
 }
 
 function initUpdater() {
   if (inThread && document.hidden && tid == null) {
+    observePosting();
     tid = setTimeout(update, UPDATE_INTERVAL);
   }
 }
 
 function clearUpdater() {
-  clearTimeout(tid);
-  tid = null;
-  unread = 0;
-  Favicon.reset();
+  if (tid != null) {
+    clearTimeout(tid);
+    tid = null;
+    unread = 0;
+    Favicon.reset();
+    ignorePosting();
+  }
 }
 
 function handleVisibility() {
@@ -80,9 +83,7 @@ function handleVisibility() {
 }
 
 function handlePosting(container) {
-  // TODO: Make sure it's properly GCed.
   var observer = new MutationObserver(function(mutations) {
-    if (!document.hidden) return;
     mutations.forEach(function(mutation) {
       Array.prototype.forEach.call(mutation.addedNodes, function(node) {
         if (node.nodeType !== Node.ELEMENT_NODE) return;
@@ -96,17 +97,26 @@ function handlePosting(container) {
       });
     });
   });
-  observer.observe(container, {childList: true, subtree: true});
+
+  observePosting = function() {
+    observer.observe(container, {childList: true, subtree: true});
+  };
+  ignorePosting = function() {
+    observer.disconnect();
+  };
 }
 
 function handleNavigation() {
   var thread = document.querySelector(".threads");
   clearUpdater();
+  updateBtn = null;
+  observePosting = null;
+  ignorePosting = null;
   if (thread) {
-    updateBtn = document.querySelector(".threads > .btn-group > .btn-default");
+    updateBtn = thread.querySelector(":scope > .btn-group > .btn-default");
     inThread = true;
-    initUpdater();
     handlePosting(thread);
+    initUpdater();
   } else {
     inThread = false;
   }
