@@ -6,7 +6,8 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.7.2
+// @version     0.7.3
+// @run-at      document-start
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -617,4 +618,6 @@ function handleApp(container) {
   observer.observe(container, {childList: true});
 }
 
-handleApp(document.body);
+document.addEventListener("DOMContentLoaded", function() {
+  handleApp(document.body);
+});
