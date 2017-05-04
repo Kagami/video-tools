@@ -565,7 +565,7 @@ function handleThread(container) {
         } else if (node.classList.contains("reply-form")) {
           embedUpload(node);
         } else if (node.classList.contains("thread-tree")) {
-          Array.prototype.forEach.call(node.querySelectorAll(".post"), handlePost);
+          handlePosts(node);
         }
       });
     });
