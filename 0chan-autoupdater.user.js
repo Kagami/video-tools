@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-autoupdater.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.0.6
+// @version     0.0.7
 // @grant       none
 // ==/UserScript==
 
@@ -123,8 +123,12 @@ function handleNavigation() {
 }
 
 function handleApp(container) {
+  if (window.app && window.app.$bus) {
+    window.app.$bus.on("refreshContentDone", handleNavigation);
+    return;
+  }
   var observer = new MutationObserver(function() {
-    if (!window.app.$bus) return;
+    if (!window.app || !window.app.$bus) return;
     observer.disconnect();
     window.app.$bus.on("refreshContentDone", handleNavigation);
   });
