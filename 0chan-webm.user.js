@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.7.4
+// @version     0.7.5
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -21,6 +21,7 @@
 // @connect     2ch.hk
 // @connect     brchan.org
 // @connect     4chan.org
+// @connect     8ch.net
 // ==/UserScript==
 
 var LOAD_BYTES1 = 100 * 1024;
@@ -48,6 +49,7 @@ var ALLOWED_HOSTS = [
   "2ch.hk",
   "brchan.org",
   "[a-z0-9]+.4chan.org",
+  "media.8ch.net",
 ];
 var ALLOWED_LINKS = ALLOWED_HOSTS.map(function(host) {
   host = host.replace(/\./g, "\\.");
