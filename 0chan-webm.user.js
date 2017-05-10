@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.7.5
+// @version     0.7.6
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -130,18 +130,21 @@ function showTime(duration) {
   return pad2(duration / 60) + ":" + pad2(duration % 60);
 }
 
+function clearThumbCache() {
+  Object.keys(localStorage).filter(function(k) {
+    return k.startsWith("thumb_") || k.startsWith("meta_");
+  }).forEach(localStorage.removeItem.bind(localStorage));
+}
+
 function setCacheItem(name, value) {
   try {
     localStorage.setItem(name, value);
   } catch(e) {
     if (e.name !== "QuotaExceededError" &&
-        e.name !== "NS_ERROR_DOM_QUOTA_REACHED")
+        e.name !== "NS_ERROR_DOM_QUOTA_REACHED") {
       throw e;
-    var sessionId = localStorage.getItem("sessionId");
-    var volume = localStorage.getItem("webm_volume");
-    localStorage.clear();
-    localStorage.setItem("sessionId", sessionId);
-    localStorage.setItem("webm_volume", volume);
+    }
+    clearThumbCache();
     localStorage.setItem(name, value);
   }
 }
