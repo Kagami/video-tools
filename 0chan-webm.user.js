@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.7.6
+// @version     0.7.7
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -267,8 +267,10 @@ function saveVolumeToCache(volume) {
 
 function createVideoElement(post, link, thumb) {
   var meta = getMetadataFromCache(link.href);
-  var body = post.querySelector(".post-body-message");
-  var bodyHeight = body.style.maxHeight;
+  var body = post.querySelector(".post-body");
+  var bodyWidth = body.style.maxWidth;
+  var bodyMsg = post.querySelector(".post-body-message");
+  var bodyMsgHeight = bodyMsg.style.maxHeight;
   var attachments = post.querySelector(".post-inline-attachment");
   var attachHeight = attachments && attachments.style.maxHeight;
 
@@ -315,7 +317,8 @@ function createVideoElement(post, link, thumb) {
 
   var expand = function() {
     if (attachments) attachments.style.maxHeight = "none";
-    body.style.maxHeight = "none";
+    body.style.maxWidth = "1305px";
+    bodyMsg.style.maxHeight = "none";
     labels.style.display = "none";
     caption.style.display = "none";
     container.replaceChild(vid, a);
@@ -324,7 +327,8 @@ function createVideoElement(post, link, thumb) {
   };
   var minimize = function() {
     if (attachments) attachments.style.maxHeight = attachHeight;
-    body.style.maxHeight = bodyHeight;
+    body.style.maxWidth = bodyWidth;
+    bodyMsg.style.maxHeight = bodyMsgHeight;
     labels.style.display = "block";
     caption.style.display = "block";
     container.replaceChild(a, vid);
@@ -349,7 +353,7 @@ function createVideoElement(post, link, thumb) {
   var vid = document.createElement("video");
   vid.style.display = "block";
   vid.style.maxWidth = "100%";
-  vid.style.maxHeight = "950px";
+  vid.style.maxHeight = "960px";
   vid.style.cursor = "pointer";
   vid.loop = true;
   vid.autoplay = true;
