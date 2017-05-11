@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.7.9
+// @version     0.8.0
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -196,12 +196,14 @@ function loadVideo(url, videoData) {
     var blobURL = URL.createObjectURL(blob);
     var vid = document.createElement("video");
     vid.muted = true;
-    vid.autoplay = false;
     vid.addEventListener("loadeddata", function() {
-      var duration = vid.duration;
-      var title = url.endsWith(".mp4") ? "" : getMatroskaTitle(videoData);
-      saveMetadataToCache(url, {duration: duration, title: title});
-      resolve(vid);
+      if ((vid.mozDecodedFrames == null || vid.mozDecodedFrames > 0) &&
+          (vid.webkitDecodedFrameCount == null || vid.webkitDecodedFrameCount > 0)) {
+        setVideoMeta(url, vid, videoData);
+        resolve(vid);
+      } else {
+        reject(new Error("partial data"))
+      }
     });
     vid.addEventListener("error", function() {
       reject(new Error("can't load"));
@@ -210,33 +212,26 @@ function loadVideo(url, videoData) {
   });
 }
 
-function makeScreenshot(firstPass, url, vid) {
+function setVideoMeta(url, vid, videoData) {
+  var width = vid.videoWidth;
+  var height = vid.videoHeight;
+  var duration = vid.duration;
+  var title = url.endsWith(".mp4") ? "" : getMatroskaTitle(videoData);
+  saveMetadataToCache(url, {
+    width: width,
+    height: height,
+    duration: duration,
+    title: title,
+  });
+}
+
+function makeScreenshot(vid) {
   return new Promise(function(resolve, reject) {
     var c = document.createElement("canvas");
     var ctx = c.getContext("2d");
-    var width = c.width = vid.videoWidth;
-    var height = c.height = vid.videoHeight;
-    if (width <= 0 || width > 4096 || height <= 0 || height > 4096) {
-      throw new Error("bad dimensions");
-    }
-    try {
-      ctx.drawImage(vid, 0, 0);
-    } catch(e) {
-      throw new Error("can't decode");
-    }
-    // Opera may return black frame if not enough data were loaded.
-    if (firstPass) {
-      var imgData = ctx.getImageData(0, 0, width, height).data;
-      var fullBlack = imgData.every(function(v, i) {
-        // [0, 0, 0, 255, 0, 0, 0, 255, ...]
-        var rgb = (i + 1) & 3;
-        return v === (rgb ? 0 : 255);
-      });
-      if (fullBlack) {
-        throw new Error("black frame");
-      }
-    }
-    saveMetadataToCache(url, {width: width, height: height});
+    c.width = vid.videoWidth;
+    c.height = vid.videoHeight;
+    ctx.drawImage(vid, 0, 0);
     resolve(c);
   });
 }
@@ -392,13 +387,12 @@ function saveThumbToCache(url, thumb) {
 }
 
 function embedVideo(post, link) {
-  var firstPass = true;
   var hasMeta = hasMetadataInCache(link.href);
   var cachedThumb = getThumbFromCache(link.href);
   var part1 = function(limit) {
     return loadVideoData(link.href, limit)
       .then(loadVideo.bind(null, link.href))
-      .then(makeScreenshot.bind(null, firstPass, link.href))
+      .then(makeScreenshot)
       .then(makeThumbnail);
   };
   var part2 = function(thumb) {
@@ -425,7 +419,6 @@ function embedVideo(post, link) {
       if ((e.message || "").startsWith("HTTP ")) {
         partErr(e);
       } else {
-        firstPass = false;
         part1(LOAD_BYTES2).then(part2).catch(partErr);
       }
     });
