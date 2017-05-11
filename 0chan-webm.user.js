@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.8.0
+// @version     0.8.1
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -85,6 +85,7 @@ function getMatroskaTitle(data) {
   while (i < data.length) {
     element = readInt();
     size = readInt();
+    if (size <= 0) break;
     if (element === 0x3BA9) {  // Title
       while (size-- && i < data.length) {
         title += String.fromCharCode(data[i++]);
