@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.7.8
+// @version     0.7.9
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -199,7 +199,7 @@ function loadVideo(url, videoData) {
     vid.autoplay = false;
     vid.addEventListener("loadeddata", function() {
       var duration = vid.duration;
-      var title = getMatroskaTitle(videoData);
+      var title = url.endsWith(".mp4") ? "" : getMatroskaTitle(videoData);
       saveMetadataToCache(url, {duration: duration, title: title});
       resolve(vid);
     });
