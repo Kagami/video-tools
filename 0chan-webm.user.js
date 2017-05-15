@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.8.2
+// @version     0.8.3
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -435,14 +435,27 @@ function handlePost(post) {
   }).forEach(embedVideo.bind(null, post));
 }
 
-function getUploadURL(host) {
-  if (host.api === "pomf") {
-    return "https://" + host.host + "/upload.php";
-  } else if (host.api === "loli-safe") {
-    return "https://" + host.host + "/api/upload";
-  } else {
-    throw new Error("unknown upload API");
-  }
+function uploadXHR(host, data) {
+  return new Promise(function(resolve, reject) {
+    if (host.api === "loli-safe") {
+      var url = "https://" + host.host + "/api/upload";
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", url, true);
+      xhr.onload = resolve.bind(null, xhr);
+      xhr.onerror = reject;
+      xhr.send(data);
+    } else if (host.api === "pomf") {
+      GM_xmlhttpRequest({
+        url: "https://" + host.host + "/upload.php",
+        method: "POST",
+        data: data,
+        onload: resolve,
+        onerror: reject,
+      });
+    } else {
+      reject(new Error("unknown upload API"));
+    }
+  });
 }
 
 function getFileURL(host, file) {
@@ -455,29 +468,15 @@ function getFileURL(host, file) {
 }
 
 function upload(host, files) {
-  return new Promise(function(resolve, reject) {
-    var form = new FormData();
-    Array.prototype.forEach.call(files, function(file) {
-      form.append("files[]", file);
-    });
-    GM_xmlhttpRequest({
-      url: getUploadURL(host),
-      method: "POST",
-      data: form,
-      onload: function(res) {
-        if (res.status >= 200 && res.status < 400) {
-          var info = JSON.parse(res.responseText);
-          if (info.success) {
-            resolve(info.files.map(getFileURL.bind(null, host)));
-          } else {
-            reject(new Error(info.description.code));
-          }
-        } else {
-          reject(new Error(res.status));
-        }
-      },
-      onerror: reject,
-    });
+  var form = new FormData();
+  Array.prototype.forEach.call(files, function(file) {
+    form.append("files[]", file);
+  });
+  return uploadXHR(host, form).then(function(res) {
+    if (res.status >= 400) throw new Error(res.status);
+    var info = JSON.parse(res.responseText);
+    if (!info.success) throw new Error(info.description.code);
+    return info.files.map(getFileURL.bind(null, host));
   });
 }
 
