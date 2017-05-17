@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.8.3
+// @version     0.8.4
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -575,37 +575,46 @@ function handleThread(container) {
   embedUpload(document.querySelector(".reply-form"));
 }
 
-function handleThreads() {
-  // Class naming is a bit stupid. Thanks Misha.
-  var thread = document.querySelector(".threads");
-  var threads = document.querySelector(".thread");
-  if (thread) {
-    handleThread(thread);
-  } else if (threads) {
-    var container = threads.parentNode.parentNode;
-    var observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        Array.prototype.forEach.call(mutation.addedNodes, function(node) {
-          if (node.nodeType !== Node.ELEMENT_NODE) return;
-          if (node.parentNode === container) {
-            handlePosts(node);
-          } else if (node.classList.contains("post-popup")) {
-            handlePost(node);
-          } else if (node.classList.contains("reply-form")) {
-            embedUpload(node);
-          }
-        });
+function handleThreads(container) {
+  var observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      Array.prototype.forEach.call(mutation.addedNodes, function(node) {
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        if (node.parentNode === container) {
+          handlePosts(node);
+        } else if (node.classList.contains("post-popup")) {
+          handlePost(node);
+        } else if (node.classList.contains("reply-form")) {
+          embedUpload(node);
+        }
       });
     });
-    observer.observe(container, {childList: true, subtree: true});
-    handlePosts(container);
-    embedUpload(document.querySelector(".reply-form"));
+  });
+  observer.observe(container, {childList: true, subtree: true});
+  handlePosts(container);
+  embedUpload(document.querySelector(".reply-form"));
+}
+
+function handleNavigation() {
+  var thread = document.querySelector(".threads");
+  var container = document.querySelector("#content");
+  if (thread) {
+    handleThread(thread);
+  } else if (container && !container.children.length) {
+    var observer = new MutationObserver(function() {
+      observer.disconnect();
+      thread = container.querySelector(".thread");
+      if (thread) {
+        handleThreads(thread.parentNode.parentNode);
+      }
+    });
+    observer.observe(container, {childList: true});
   }
 }
 
 unsafeWindow._webmHandler = typeof exportFunction === "undefined"
-  ? handleThreads
-  : exportFunction(handleThreads, unsafeWindow);
+  ? handleNavigation
+  : exportFunction(handleNavigation, unsafeWindow);
 
 function handleApp(container) {
   // `unsafeWindow.app.$bus` reference doesn't work in some UA.
