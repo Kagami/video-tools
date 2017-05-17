@@ -6,7 +6,7 @@
 // @updateURL   https://raw.githubusercontent.com/Kagami/video-tools/master/0chan-webm.user.js
 // @include     https://0chan.hk/*
 // @include     http://nullchan7msxi257.onion/*
-// @version     0.8.4
+// @version     0.8.5
 // @grant       unsafeWindow
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setClipboard
@@ -596,16 +596,19 @@ function handleThreads(container) {
 }
 
 function handleNavigation() {
-  var thread = document.querySelector(".threads");
+  var singleThread = document.querySelector(".threads");
+  var firstThread = document.querySelector(".thread");
   var container = document.querySelector("#content");
-  if (thread) {
-    handleThread(thread);
+  if (singleThread) {
+    handleThread(singleThread);
+  } else if (firstThread) {
+    handleThreads(firstThread.parentNode.parentNode);
   } else if (container && !container.children.length) {
     var observer = new MutationObserver(function() {
       observer.disconnect();
-      thread = container.querySelector(".thread");
-      if (thread) {
-        handleThreads(thread.parentNode.parentNode);
+      firstThread = container.querySelector(".thread");
+      if (firstThread) {
+        handleThreads(firstThread.parentNode.parentNode);
       }
     });
     observer.observe(container, {childList: true});
